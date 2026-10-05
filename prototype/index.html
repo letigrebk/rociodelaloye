@@ -39,7 +39,7 @@
   --fs-b: 15px;     /* running text */
   --fs-l: 20px;     /* project titles, index titles */
   --gutter: max(16px, 4vw);
-  --radius: 3px;          /* soft corners on every image and video */
+  --radius: 4px;          /* soft corners on every image and video */
   --ease: cubic-bezier(.22, 1, .36, 1);
   color-scheme: light;
 }
@@ -688,7 +688,7 @@ items.forEach(it => {
 let hovered = null, capFor = null;
 function setHover(it) {
   if (hovered) hovered.el.classList.remove('hover');
-  hovered = it; it.el.classList.add('hover'); world.classList.add('has-hover'); showCap(it); kick();
+  hovered = it; it.el.classList.add('hover'); world.classList.add('has-hover'); showCap(it); playGlass(it); kick();
 }
 function clearHover() {
   if (hovered) hovered.el.classList.remove('hover');
@@ -1146,7 +1146,7 @@ function settled() {
       const w = it.w * s, h = it.h * s, d = Math.hypot(it.sx + w / 2 - vw / 2, it.sy + h / 2 - vh / 2);
       if (d < bd) { bd = d; best = it; }
     }
-    if (best && bd < Math.min(vw, vh) * 0.32) showCap(best); else hideCap();
+    if (best && bd < Math.min(vw, vh) * 0.32) { if (capFor !== best) playGlass(best); showCap(best); } else hideCap();
   }
 }
 
@@ -1525,12 +1525,34 @@ function ensureGain(it) {
     SOUND.gains.set(it, gn);
   } catch (_) {}
 }
+/* Phones: iPhones mute web audio when the ring/silent switch is on. Declaring the page
+   as media playback (Safari 16.4+), and on older systems keeping a silent media element
+   playing, puts the site's sound on the media channel like a video. Everything here runs
+   inside the tap, which is what lets the phone start audio at all. */
+let silentEl = null;
+function unlockAudio() {
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (_) {}
+  if (!silentEl) {
+    const sr = 8000, n = sr / 2, b = new ArrayBuffer(44 + n * 2), v = new DataView(b);
+    const w = (o, str) => [...str].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+    w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+    silentEl = new Audio(URL.createObjectURL(new Blob([b], { type: 'audio/wav' })));
+    silentEl.loop = true; silentEl.setAttribute('playsinline', '');
+  }
+  silentEl.play().catch(() => {});
+  const ctx = SOUND.ctx;
+  if (ctx) {
+    if (ctx.state !== 'running') ctx.resume().catch(() => {});
+    try { const src = ctx.createBufferSource(); src.buffer = ctx.createBuffer(1, 1, 22050); src.connect(ctx.destination); src.start(0); } catch (_) {}
+  }
+}
 function setSound(on) {
   SOUND.on = on;
   soundBtn.textContent = on ? 'Sound on' : 'Sound off';
   soundBtn.setAttribute('aria-pressed', String(on));
   if (on && !SOUND.ctx) { try { SOUND.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) {} }
-  if (on && SOUND.ctx && SOUND.ctx.state === 'suspended') SOUND.ctx.resume();
+  if (on) { unlockAudio(); loadGlass(); } else if (silentEl) silentEl.pause();
   items.filter(i => i.a).forEach(it => {
     if (on) { if (!it.loaded) load(it); ensureGain(it); it.media.muted = false; if (it.playing) it.media.play().catch(() => {}); }
   });
@@ -1539,6 +1561,34 @@ function setSound(on) {
   soundStep(true); kick();
 }
 soundBtn.addEventListener('click', () => setSound(!SOUND.on));
+// a phone can suspend audio when the page goes to the background; the next touch wakes it
+addEventListener('touchend', () => { if (SOUND.on && SOUND.ctx && SOUND.ctx.state !== 'running') unlockAudio(); }, { passive: true });
+
+/* Glass: a soft glass note (tools/glass.mjs, E6) when a piece is hovered, or on phones
+   when a new piece comes to rest in the middle. Each piece has its own note in the
+   ambient's key (E, F#, G#, B, C#), panned toward where it sits on screen. */
+const GLASS = { buf: null, loading: null, last: 0, lastIt: null };
+const GLASS_RATES = [1, 9 / 8, 5 / 4, 3 / 2, 5 / 3, 1 / 2 * 5 / 3, 2];
+function loadGlass() {
+  const ctx = SOUND.ctx; if (!ctx || GLASS.buf || GLASS.loading) return;
+  const a = document.createElement('audio');
+  const url = a.canPlayType('audio/mp4; codecs="mp4a.40.2"') ? 'media/glass.mp4' : 'media/glass.ogg';
+  GLASS.loading = fetch(url).then(r => r.arrayBuffer()).then(d => new Promise((ok, no) => ctx.decodeAudioData(d, ok, no)))
+    .then(b => { GLASS.buf = b; }).catch(() => { GLASS.loading = null; });
+}
+function playGlass(it) {
+  const ctx = SOUND.ctx, now = performance.now();
+  if (!SOUND.on || !ctx || !GLASS.buf || ctx.state !== 'running' || overlayOpen()) return;
+  if (now - GLASS.last < (phone ? 450 : 70) || it === GLASS.lastIt && now - GLASS.last < 600) return;   // phones: occasional, not a run of notes
+  GLASS.last = now; GLASS.lastIt = it;
+  const src = ctx.createBufferSource(), gn = ctx.createGain();
+  src.buffer = GLASS.buf;
+  src.playbackRate.value = GLASS_RATES[hashStr(it.id) % GLASS_RATES.length];
+  gn.gain.value = 0.2 + (it.d === 2 ? 0.05 : it.d === 0 ? -0.06 : 0);   // far pieces a little softer
+  let out = gn;
+  if (ctx.createStereoPanner) { const pn = ctx.createStereoPanner(); pn.pan.value = clamp(((it.sx + it.w * s / 2) / vw - 0.5) * 1.2, -0.6, 0.6); gn.connect(pn); out = pn; }
+  src.connect(gn); out.connect(ctx.destination); src.start();
+}
 let soundT = 0;
 function soundStep(force) {
   const now = performance.now();
