@@ -329,7 +329,7 @@ body.show-index .sound, body.show-about .sound, body.show-project .sound { displ
   .index { padding-top: calc(env(safe-area-inset-top, 0px) + 88px); }
   .modes span { display: none; }
   .modes { gap: 12px; }
-  .modes [data-o="gather"] { margin-left: 10px; }
+  .modes [data-o="trails"] { margin-left: 10px; }
   .hint { bottom: calc(env(safe-area-inset-bottom, 0px) + 44px); }
   .modes { max-width: calc(100vw - 2 * var(--gutter) - 70px); }
 }
@@ -360,7 +360,8 @@ body.show-index .sound, body.show-about .sound, body.show-project .sound { displ
   <button type="button" data-m="lines" aria-pressed="false">Lines</button>
   <button type="button" data-m="network" aria-pressed="false">Traces</button>
   <span class="sep">Open</span>
-  <button type="button" data-o="gather" aria-pressed="false">Gather</button>
+  <button type="button" data-o="trails" aria-pressed="false">Trails</button>
+  <button type="button" data-o="wires" aria-pressed="false">Wires</button>
   <button type="button" data-o="simple" aria-pressed="false">Simple</button>
   <span class="sep">Light</span>
   <button type="button" data-l="now" aria-pressed="false">Now</button>
@@ -1345,40 +1346,43 @@ function openProject(hero, opts = {}) {
       c.style.width = r.w.toFixed(1) + 'px'; c.style.height = r.h.toFixed(1) + 'px';
     });
     // threads from the chosen fragment to each of the others
-    fg.setTransform(dpr, 0, 0, dpr, 0, 0); fg.clearRect(0, 0, vw, vh);
-    const fade = simple ? 0 : 1 - clamp((t - (end - 320)) / 320, 0, 1);
+    fg.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (openMode === 'trails') {
+      // feedback: last frame's trails fade a little, then each travelling fragment leaves
+      // a faint copy of itself where it is now; the paths show without any line drawn
+      fg.globalCompositeOperation = 'destination-out';
+      fg.fillStyle = 'rgba(0,0,0,0.16)'; fg.fillRect(0, 0, vw, vh);
+      fg.globalCompositeOperation = 'source-over';
+      const tf = 1 - clamp((t - (end - 380)) / 380, 0, 1);
+      sibs.forEach(it => {
+        const r = pos.get(it), c = clones.get(it);
+        if (!r || !c) return;
+        fg.globalAlpha = 0.2 * tf;
+        try { fg.drawImage(c, r.x, r.y, r.w, r.h); } catch (_) {}
+      });
+      fg.globalAlpha = 1;
+    } else fg.clearRect(0, 0, vw, vh);
+    const fade = simple || openMode === 'trails' ? 0 : 1 - clamp((t - (end - 700)) / 450, 0, 1);   // wires are gone before the fragments land
     if (fade > 0) {
       const h = pos.get(hero), hc = [h.x + h.w / 2, h.y + h.h / 2];
       sibs.forEach((it, k) => {
         const r = pos.get(it), sc = [r.x + r.w / 2, r.y + r.h / 2];
         const draw = clamp((t - k * 28) / T.connect, 0, 1), d = 1 - Math.pow(1 - draw, 3);
         if (!d) return;
-        if (iface === 'operator') {
-          // operator wires: out of the side of one node, a smooth curve into the side of the other
+        {
+          // fine wires: a hairline curve out of the side of one fragment into the side of the other
           const right = sc[0] >= hc[0];
           const A = [right ? h.x + h.w : h.x, h.y + h.h / 2], B = [right ? r.x : r.x + r.w, r.y + r.h / 2];
           const pull = Math.max(40, Math.abs(B[0] - A[0]) * 0.5) * (right ? 1 : -1);
           const C1 = [A[0] + pull, A[1]], C2 = [B[0] - pull, B[1]];
           const bz = u => { const v = 1 - u; return [v*v*v*A[0] + 3*v*v*u*C1[0] + 3*v*u*u*C2[0] + u*u*u*B[0], v*v*v*A[1] + 3*v*v*u*C1[1] + 3*v*u*u*C2[1] + u*u*u*B[1]]; };
-          fg.strokeStyle = `rgba(40,40,44,${0.7 * fade})`; fg.lineWidth = 1.2;
+          fg.strokeStyle = `rgba(40,40,44,${0.28 * fade})`; fg.lineWidth = 0.6;
           fg.beginPath(); fg.moveTo(A[0], A[1]);
           for (let j = 1; j <= 32; j++) { const q = bz(j / 32 * d); fg.lineTo(q[0], q[1]); }
           fg.stroke();
-          const sq = (x, y, c) => { fg.fillStyle = c; fg.fillRect(x - 3, y - 3, 6, 6); };
-          sq(A[0], A[1], `rgba(40,40,44,${0.9 * fade})`);
-          if (d > 0.98) sq(B[0], B[1], `rgba(40,40,44,${0.9 * fade})`);
-          const q = bz(((t * 0.0012 + k * 0.17) % 1) * d);      // data travelling down the wire
-          fg.fillStyle = hexA(getComputedStyle(document.documentElement).getPropertyValue('--acid').trim() || '#5cf03a', fade);
-          fg.beginPath(); fg.arc(q[0], q[1], 2.2, 0, Math.PI * 2); fg.fill();
-          return;
         }
-        const ex = hc[0] + (sc[0] - hc[0]) * d, ey = hc[1] + (sc[1] - hc[1]) * d;
-        fg.strokeStyle = `rgba(0,0,0,${0.62 * fade})`; fg.lineWidth = 0.8;
-        fg.beginPath(); fg.moveTo(hc[0], hc[1]); fg.lineTo(ex, ey); fg.stroke();
-        fg.fillStyle = `rgba(0,0,0,${0.85 * fade})`;
-        fg.beginPath(); fg.arc(ex, ey, 2, 0, Math.PI * 2); fg.fill();
       });
-      if (iface !== 'operator') { fg.beginPath(); fg.arc(hc[0], hc[1], 2.4, 0, Math.PI * 2); fg.fillStyle = `rgba(0,0,0,${0.9 * fade})`; fg.fill(); }
+
     }
     projectBg.style.opacity = String(clamp((t - T.bgAt) / T.bgDur, 0, 1));
     if (t < end) { flightState.raf = requestAnimationFrame(step); return; }
@@ -1702,8 +1706,8 @@ function spawnPoint(k) { const sp = SPAWNS[k]; return phone ? { x: sp.px, y: sp.
 
 /* Field option switch (prototype only) */
 const modesEl = document.getElementById('modes');
-let openMode = 'gather';
-try { const o = localStorage.getItem('rd-open'); if (o === 'gather' || o === 'simple') openMode = o; } catch (_) {}
+let openMode = 'trails';
+try { const o = localStorage.getItem('rd-open'); if (o === 'trails' || o === 'wires' || o === 'simple') openMode = o; } catch (_) {}
 function setOpenMode(o) {
   openMode = o;
   modesEl.querySelectorAll('[data-o]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.o === o)));
