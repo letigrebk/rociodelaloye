@@ -859,6 +859,7 @@ function setView(v) {
   world.setAttribute('aria-hidden', String(idx || ab));
   peek.classList.remove('on'); clearHover();
   if (!projectOpen) { try { history.replaceState(null, '', idx ? '#index' : ab ? '#about' : location.pathname + location.search); } catch (_) {} }
+  setTimeout(() => soundStep(true), 0);
 }
 navWorld.addEventListener('click', () => setView('world'));
 navIndex.addEventListener('click', () => setView('index'));
@@ -1036,6 +1037,7 @@ function afterLand() {
   }), { root: projectEl, threshold: 0.2 });
   projectEl.querySelectorAll('video').forEach(v => slotObserver.observe(v));
   items.forEach(i => { if (i.playing) { i.playing = false; i.media.pause(); } });
+  soundStep(true);
   try { history.replaceState(null, '', '#' + projectOpen.hero.p); } catch (_) {}
 }
 
@@ -1057,7 +1059,7 @@ function closeProject(instant) {
     projectEl.setAttribute('aria-hidden', 'true'); world.setAttribute('aria-hidden', 'false');
     projectEl.innerHTML = '';
     try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {}
-    videos();
+    videos(); soundStep(true);
   };
   projectBg.style.transition = instant || reduce ? 'none' : 'opacity .55s cubic-bezier(.22,1,.36,1)';
   projectBg.style.opacity = '0';
@@ -1120,7 +1122,34 @@ setInterval(() => { if (driftWanted(performance.now())) kick(); }, 1000);
    it is to the centre of the screen: it fades in as you approach and out as you leave.
    Volume runs through Web Audio so it also works on phones. */
 const soundBtn = document.getElementById('sound');
-const SOUND = { on: false, ctx: null, gains: new Map() };
+const SOUND = { on: false, ctx: null, gains: new Map(), amb: { buf: null, src: null, gain: null, loading: null } };
+/* The ambient: a 48 s bed composed for the site (tools/ambient.mjs), played as a
+   gapless loop underneath. It dips when a loop with its own sound is near the centre,
+   sits lower away from the field, and is silent during a screening. */
+function ambientURL() {
+  const a = document.createElement('audio');
+  return a.canPlayType('audio/mp4; codecs="mp4a.40.2"') ? 'media/ambient.m4a' : 'media/ambient.ogg';
+}
+async function startAmbient() {
+  const A = SOUND.amb, ctx = SOUND.ctx;
+  if (!ctx || A.src) return;
+  if (!A.gain) { A.gain = ctx.createGain(); A.gain.gain.value = 0; A.gain.connect(ctx.destination); }
+  if (!A.buf) {
+    A.loading = A.loading || fetch(ambientURL()).then(r => r.arrayBuffer()).then(d => new Promise((ok, no) => ctx.decodeAudioData(d, ok, no)));
+    try { A.buf = await A.loading; } catch (_) { A.loading = null; return; }
+  }
+  if (!SOUND.on || A.src) return;
+  const src = ctx.createBufferSource();
+  src.buffer = A.buf; src.loop = true; src.connect(A.gain); src.start();
+  A.src = src;
+  soundStep(true);
+}
+function stopAmbient() {
+  const A = SOUND.amb;
+  if (!A.src) return;
+  const src = A.src; A.src = null;
+  setTimeout(() => { try { src.stop(); } catch (_) {} }, 2600);
+}
 function ensureGain(it) {
   if (!SOUND.ctx || SOUND.gains.has(it)) return;
   try {
@@ -1138,6 +1167,7 @@ function setSound(on) {
   items.filter(i => i.a).forEach(it => {
     if (on) { if (!it.loaded) load(it); ensureGain(it); it.media.muted = false; if (it.playing) it.media.play().catch(() => {}); }
   });
+  if (on) startAmbient(); else stopAmbient();
   if (!on) setTimeout(() => { if (!SOUND.on) items.filter(i => i.a).forEach(it => { it.media.muted = true; }); }, 600);
   soundStep(true); kick();
 }
@@ -1148,6 +1178,7 @@ function soundStep(force) {
   if (!force && now - soundT < 90) return;
   soundT = now;
   const reach = Math.hypot(vw, vh) * 0.5;
+  let loudest = 0;
   items.forEach(it => {
     if (!it.a) return;
     let g = 0;
@@ -1155,10 +1186,17 @@ function soundStep(force) {
       const w = it.w * s, h = it.h * s, d = Math.hypot(it.sx + w / 2 - vw / 2, it.sy + h / 2 - vh / 2);
       g = Math.pow(clamp(1 - d / reach, 0, 1), 1.6) * 0.9;
     }
+    loudest = Math.max(loudest, g);
     const gn = SOUND.gains.get(it);
     if (gn) gn.gain.setTargetAtTime(g, SOUND.ctx.currentTime, 0.35);
     else if (!it.media.muted) it.media.volume = g;
   });
+  const A = SOUND.amb;
+  if (A.gain) {
+    let a = 0;
+    if (SOUND.on && A.src && !screenOpen) a = overlayOpen() ? 0.16 : 0.3 * (1 - 0.6 * loudest / 0.9);
+    A.gain.gain.setTargetAtTime(a, SOUND.ctx.currentTime, SOUND.on ? 0.8 : 0.5);
+  }
 }
 
 /* ---------- Light that follows the visitor's day ----------
@@ -1209,6 +1247,7 @@ function openScreening(k) {
   screenVideo.src = `media/${id}.mp4`; screenVideo.poster = `media/${id}.jpg`;
   screenVideo.muted = false; screenVideo.currentTime = 0;
   screenOpen = true; screenEl.classList.add('on'); screenEl.setAttribute('aria-hidden', 'false');
+  soundStep(true);
   projectEl.querySelectorAll('video').forEach(v => v.pause());
   soundStep(true);
   screenVideo.play().catch(() => { screenVideo.muted = true; screenVideo.play().catch(() => {}); });
@@ -1218,6 +1257,7 @@ function openScreening(k) {
 function closeScreening() {
   if (!screenOpen) return;
   screenOpen = false; screenEl.classList.remove('on', 'quiet'); screenEl.setAttribute('aria-hidden', 'true');
+  soundStep(true);
   screenVideo.pause();
   setTimeout(() => { if (!screenOpen) { screenVideo.removeAttribute('src'); screenVideo.load(); } }, 520);
   if (slotObserver) projectEl.querySelectorAll('video').forEach(v => { slotObserver.unobserve(v); slotObserver.observe(v); });
@@ -1286,8 +1326,8 @@ draw(); intro(); videos();
 setTimeout(() => hint.classList.add('gone'), 6000);
 addEventListener('resize', () => { measure(); wake(); });
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) items.forEach(i => { if (i.playing) { i.playing = false; i.media.pause(); } });
-  else videos();
+  if (document.hidden) { items.forEach(i => { if (i.playing) { i.playing = false; i.media.pause(); } }); if (SOUND.ctx) SOUND.ctx.suspend(); }
+  else { videos(); if (SOUND.ctx && SOUND.on) SOUND.ctx.resume(); }
 });
 })();
 </script>
