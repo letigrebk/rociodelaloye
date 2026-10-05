@@ -1,6 +1,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Rocío Delaloye</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500&display=swap">
 <style>
 /* Layout: one fixed full-screen field of work you pan through, under a fixed header;
    INDEX is a plain scrolling list over the same body of work.
@@ -12,12 +15,15 @@
   --line: #e0e0e0;        /* the site's accent, 88% grey */
   --wash: #f5f5f5;        /* the site's light accent, placeholder behind loading work */
   --nav-air: 245, 246, 248;   /* cool off-white behind the navigation (RGB, used with alpha) */
-  --glass-hi: 250, 249, 246;  /* frosted pills: a warm grey glass, lighter at the top (RGB, used with alpha) */
-  --glass-lo: 236, 234, 229;
-  --glass-edge: 255, 255, 255;
+  --glass: rgba(240, 240, 240, 0.31);        /* navigation pills: flat, see-through grey glass */
+  --glass-on: rgba(225, 225, 225, 0.55);     /* the current view, and hover */
+  /* The navigation's face: ABC Monument Grotesk Medium (Dinamo, licensed; read from the
+     viewer's computer until the web files are added), then Inter Tight as the nearest
+     freely served stand-in, then Helvetica Neue. */
+  --font-nav: "ABC Monument Grotesk", "ABCMonumentGrotesk", "Inter Tight", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --screen: #000000;          /* screening room: black in any light */
   --screen-ink: #ffffff;
-  /* One typeface: ABC Diatype, Regular throughout, Medium only in the navigation pills.
+  /* Text: ABC Diatype Regular throughout (the navigation pills use --font-nav).
      Licensed (Dinamo), so it is read from the viewer's computer until the web font
      files are added; otherwise Helvetica Neue. */
   --font-main: "ABC Diatype", "ABCDiatype-Regular", "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -35,8 +41,8 @@
 html, body { height: 100%; }
 @font-face { font-family: "ABC Diatype"; font-weight: 400; font-style: normal; font-display: swap;
   src: local("ABC Diatype"), local("ABC Diatype Regular"), local("ABCDiatype-Regular"); }
-@font-face { font-family: "ABC Diatype"; font-weight: 500; font-style: normal; font-display: swap;
-  src: local("ABC Diatype Medium"), local("ABCDiatype-Medium"); }
+@font-face { font-family: "ABC Monument Grotesk"; font-weight: 500; font-style: normal; font-display: swap;
+  src: local("ABC Monument Grotesk Medium"), local("ABCMonumentGrotesk-Medium"); }
 body {
   margin: 0; background: var(--bg); color: var(--ink);
   font-family: var(--font-main); font-weight: 400;
@@ -44,31 +50,28 @@ body {
 }
 a { color: inherit; text-decoration: none; }
 
-/* Header: the existing site header, fixed above the field */
-/* Each item sits in its own frosted-glass pill floating over the field; no band behind. */
+/* Header: each item in its own pill of flat, see-through grey glass, close to the
+   corners, floating over the field; nothing behind them. */
 .site-header {
   position: fixed; inset: 0 0 auto 0; z-index: 40;
-  display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  padding: calc(env(safe-area-inset-top, 0px) + max(12px, 1.25vw)) var(--gutter) 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: calc(env(safe-area-inset-top, 0px) + 20px) 20px 0;
   pointer-events: none;
 }
 .site-header a, .site-header button { pointer-events: auto; }
 .nav { display: flex; gap: 6px; }
 .pill {
   display: inline-flex; align-items: center;
-  font-family: var(--font-main); font-weight: 500; font-size: var(--fs-m); line-height: 1; letter-spacing: -0.01em;
+  font-family: var(--font-nav); font-weight: 500; font-size: 14px; line-height: 1.2; letter-spacing: -0.02em;
   color: var(--ink); border: 0; cursor: pointer; white-space: nowrap;
-  padding: 10px 13px 10px; border-radius: 9px;
-  background: linear-gradient(180deg, rgba(var(--glass-hi), 0.74), rgba(var(--glass-lo), 0.62));
-  -webkit-backdrop-filter: blur(14px) saturate(1.5); backdrop-filter: blur(14px) saturate(1.5);
-  box-shadow: inset 0 0 0 0.5px rgba(var(--glass-edge), 0.6);
-  transition: background .35s var(--ease);
+  padding: 8px 10px; border-radius: 8px;
+  background-color: var(--glass);
+  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color .2s ease;
 }
-.pill:hover, .pill[aria-current="true"] {
-  background: linear-gradient(180deg, rgba(var(--glass-hi), 0.9), rgba(var(--glass-lo), 0.82));
-}
+.pill:hover, .pill[aria-current="true"] { background-color: var(--glass-on); }
 :focus-visible { outline: 1px solid var(--ink); outline-offset: 2px; }
-.pill:focus-visible { border-radius: 9px; }
 
 /* The field */
 .world {
@@ -261,9 +264,8 @@ body.show-index .sound, body.show-about .sound, body.show-project .sound { displ
   .index-list { max-width: none; }
 }
 @media (max-width: 760px) {
-  .site-header { gap: 8px; }
+  .site-header { gap: 8px; padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px 0; }
   .nav { gap: 4px; }
-  .pill { padding: 9px 10px; }
   .about { padding-top: calc(env(safe-area-inset-top, 0px) + 88px); }
   .about-text p { font-size: 17px; }
   .veil { -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
@@ -335,7 +337,7 @@ body.show-index .sound, body.show-about .sound, body.show-project .sound { displ
   </div>
   <ul class="about-links">
     <li><a href="https://www.rociodelaloye.com/s/Rocio-Delaloye_CV.pdf" target="_blank" rel="noopener">CV ↓</a></li>
-    <li><a title="Instagram address to come">Instagram ↗</a></li>
+    <li><a href="https://www.instagram.com/rociodelaloye/" target="_blank" rel="noopener">Instagram ↗</a></li>
     <li><a href="mailto:rcdelaloye@gmail.com">Email ↗</a></li>
   </ul>
 </section>
