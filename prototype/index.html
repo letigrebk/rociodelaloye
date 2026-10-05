@@ -458,7 +458,7 @@ const SPAWNS = [
 const L = 9 / 16, P45 = 1.25;
 const PIECES = [
   // Opening frame: one dominant image, a tall loop beside it, a small fragment, work bleeding in at the edges
-  { id: 'ih-pool',       p: 'ih',  x: 2030, y: 1600, w: 760, r: L,    d: 1, ro: 'spiral' },
+  { id: 'ih-pool',       p: 'ih',  x: 2030, y: 1600, w: 760, r: L,    d: 1, ro: 'spiral', rf: 'buckets' },
   { id: 'ih-v-waterpark',p: 'ih',  x: 2690, y: 1470, w: 250, r: P45,  d: 2, v: 1 },
   { id: 'gs-hand',       p: 'gs',  x: 2850, y: 1880, w: 150, r: 432/786, d: 0 },
   { id: 'sim-city',      p: 'sim', x: 1420, y: 1170, w: 600, r: L,    d: 1 },
@@ -969,42 +969,166 @@ function grain() {
   return (GRAIN = c);
 }
 const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`; };
-function bucketRender(it, im, sx, sy, sw, sh, W2, H2, d) {
+/* Render families: each piece gets one kind of render, so no two arrive alike.
+   - adaptive: blocks split by the image's own detail (busy areas small, sky large)
+   - buckets:  a grid, from 3 huge tiles to dozens of small ones, square or not
+   - bands:    strips, top to bottom or side to side, one or two at a time
+   - progressive: the whole frame at once, soft and grainy, converging (a live viewport)
+   - none:     simply appears
+   Assigned from a fixed pattern over the pieces (so the mix stays balanced); `rf` on a
+   piece overrides it. */
+const RENDER_PATTERN = ['adaptive', 'buckets', 'progressive', 'adaptive', 'none', 'bands', 'buckets', 'progressive', 'adaptive', 'none', 'buckets', 'adaptive'];
+const RENDER_FAMILY = new Map();
+(() => {
+  const sorted = PIECES.map(p => p.id).sort((a, b) => hashStr(a + 'fam') - hashStr(b + 'fam'));
+  sorted.forEach((id, i) => RENDER_FAMILY.set(id, RENDER_PATTERN[i % RENDER_PATTERN.length]));
+  PIECES.forEach(p => { if (p.rf) RENDER_FAMILY.set(p.id, p.rf); });
+})();
+function lumaGrid(im, sx, sy, sw, sh, W2, H2) {
+  const gw = 96, gh = Math.max(8, Math.round(96 * H2 / W2));
+  const c = document.createElement('canvas'); c.width = gw; c.height = gh;
+  const x = c.getContext('2d', { willReadFrequently: true });
+  x.drawImage(im, sx, sy, sw, sh, 0, 0, gw, gh);
+  const d = x.getImageData(0, 0, gw, gh).data, L = new Float32Array(gw * gh);
+  for (let i = 0; i < L.length; i++) L[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+  return { L, gw, gh };
+}
+function adaptiveRects(im, sx, sy, sw, sh, W2, H2, R) {
+  const { L, gw, gh } = lumaGrid(im, sx, sy, sw, sh, W2, H2), kx = gw / W2, ky = gh / H2;
+  const std = (x, y, w, h) => {
+    const x0 = Math.floor(x * kx), y0 = Math.floor(y * ky), x1 = Math.max(x0 + 1, Math.ceil((x + w) * kx)), y1 = Math.max(y0 + 1, Math.ceil((y + h) * ky));
+    let s = 0, s2 = 0, n = 0;
+    for (let j = y0; j < Math.min(gh, y1); j++) for (let i = x0; i < Math.min(gw, x1); i++) { const v = L[j * gw + i]; s += v; s2 += v * v; n++; }
+    return n ? Math.sqrt(Math.max(0, s2 / n - (s / n) ** 2)) : 0;
+  };
+  const minS = Math.max(W2, H2) / 26;
+  const build = T => {
+    const out = [];
+    const split = (x, y, w, h, depth) => {
+      if (depth < 1 || (Math.min(w, h) > minS * 2 && std(x, y, w, h) > T)) {
+        const w1 = Math.round(w / 2), h1 = Math.round(h / 2);
+        split(x, y, w1, h1, depth + 1); split(x + w1, y, w - w1, h1, depth + 1);
+        split(x, y + h1, w1, h - h1, depth + 1); split(x + w1, y + h1, w - w1, h - h1, depth + 1);
+      } else out.push({ x, y, w, h });
+    };
+    // start from 2 or 3 roots along the long side, so the blocks stay near square
+    const roots = Math.max(1, Math.round(Math.max(W2 / H2, H2 / W2)));
+    for (let r = 0; r < roots; r++) {
+      if (W2 >= H2) { const x = Math.round(r * W2 / roots); split(x, 0, Math.round((r + 1) * W2 / roots) - x, H2, 0); }
+      else { const y = Math.round(r * H2 / roots); split(0, y, W2, Math.round((r + 1) * H2 / roots) - y, 0); }
+    }
+    return out;
+  };
+  let lo = 2, hi = 90, best = build(30);
+  for (let i = 0; i < 9; i++) {                      // aim for 30–80 blocks, whatever the picture
+    const mid = (lo + hi) / 2, rects = build(mid);
+    best = rects;
+    if (rects.length > 80) lo = mid; else if (rects.length < 30) hi = mid; else break;
+  }
+  return best;
+}
+function renderPiece(it, im, sx, sy, sw, sh, W2, H2, d) {
+  const fam = RENDER_FAMILY.get(it.id) || 'buckets';
+  if (fam === 'none') { it.resolving = false; finishResolve(it); return; }
+  if (fam === 'progressive') { progressiveRender(it, im, sx, sy, sw, sh, W2, H2, d); return; }
+  bucketRender(it, im, sx, sy, sw, sh, W2, H2, d, fam);
+}
+function progressiveRender(it, im, sx, sy, sw, sh, W2, H2, d) {
+  // a live viewport: the whole frame at once, soft and grainy, sharpening as samples add up
+  const R = seededR(hashStr(it.id + 'prog'));
+  const total = 1400 + R() * 1600, maxSpp = [256, 512, 1024, 2048][Math.floor(R() * 4)], readout = R() < 0.6;
+  const blur0 = (10 + R() * 14) * d, warm = R() < 0.5;
+  const c = document.createElement('canvas'); c.className = 'resolve'; c.width = W2; c.height = H2;
+  it.el.appendChild(c);
+  const g2 = c.getContext('2d'), G = grain(), t0 = performance.now(), gx = Math.floor(R() * 200), gy = Math.floor(R() * 200);
+  const tick = now => {
+    const t = now - t0, p = Math.min(1, t / total), q = 1 - Math.pow(1 - p, 2.2);    // samples come fast, then slow
+    g2.clearRect(0, 0, W2, H2);
+    g2.fillStyle = '#ececec'; g2.fillRect(0, 0, W2, H2);
+    const b = blur0 * Math.pow(1 - q, 1.6);
+    g2.filter = b > 0.4 ? `blur(${b.toFixed(1)}px)` : 'none';
+    g2.globalAlpha = 0.35 + 0.65 * Math.min(1, q * 1.4);
+    g2.drawImage(im, sx, sy, sw, sh, 0, 0, W2, H2);
+    g2.filter = 'none'; g2.globalAlpha = 1;
+    const ga = 0.75 * Math.pow(1 - q, 1.3);                                           // noise clears as it converges
+    if (ga > 0.01) {
+      g2.globalAlpha = ga;
+      const step = Math.floor(t / 45);
+      for (let y = 0; y < H2; y += 256) for (let x = 0; x < W2; x += 256)
+        g2.drawImage(G, (gx + step * 37 + x) % 200, (gy + step * 53 + y) % 200, 56, 56, x, y, 256, 256);
+      g2.globalAlpha = 1;
+    }
+    if (readout && p < 1) {
+      const spp = Math.max(1, Math.round(Math.pow(2, Math.log2(maxSpp) * q)));
+      const fs = Math.round(9 * d), label = `${warm ? 'IPR' : 'Viewport'}   ${spp} / ${maxSpp} spp   ${(t / 1000).toFixed(1)} s`;
+      g2.font = `${fs}px ${getComputedStyle(document.documentElement).getPropertyValue('--font-mono')}`;
+      const tw2 = Math.ceil(g2.measureText(label).width) + 8 * d, x = Math.round(6 * d), y = Math.round(6 * d);
+      g2.fillStyle = 'rgba(255,255,255,0.86)'; g2.fillRect(x, y, tw2, fs + 6 * d);
+      g2.fillStyle = 'rgba(20,20,22,0.85)'; g2.fillText(label, x + 4 * d, y + fs + 1 * d);
+    }
+    if (p < 1) requestAnimationFrame(tick);
+    else { it.resolving = false; finishResolve(it); }
+  };
+  requestAnimationFrame(tick);
+}
+function bucketRender(it, im, sx, sy, sw, sh, W2, H2, d, fam = 'buckets') {
   const R = seededR(hashStr(it.id + 'bucket'));
-  const pick = BUCKET_ORDERS[Math.floor(R() * BUCKET_ORDERS.length)], order = it.ro || pick;
-  const cssTile = [28, 34, 40, 48, 56, 64][Math.floor(R() * 6)];
-  // big pieces get bigger buckets: never more than 10 across or down, so every piece finishes in time
-  const tile = Math.max(cssTile * d, W2 / 10, H2 / 10);
-  const cols = Math.max(3, Math.round(W2 / tile)), rows = Math.max(2, Math.round(H2 / tile));
-  const tw = W2 / cols, th = H2 / rows;
-  const threads = 3 + Math.floor(R() * 6);                          // 3–8 buckets at once
-  const total = 1500 + R() * 1500;                                  // 1.5–3 s for the whole image
-  const preview = R() < 0.35, readout = R() < 0.45, mono = !it.ro && R() < 0.2;   // the opening image always renders in colour
-  const inkOffset = Math.floor(R() * BUCKET_INKS.length);
+  const pick = BUCKET_ORDERS[Math.floor(R() * BUCKET_ORDERS.length)];
+  let order = it.ro || pick;
+  // the tiles, by family
+  let rects = [];
+  if (fam === 'adaptive') {
+    rects = adaptiveRects(im, sx, sy, sw, sh, W2, H2, R);
+    if (!it.ro) order = ['detail', 'scatter', 'rows', 'centre'][Math.floor(R() * 4)];
+  } else if (fam === 'bands') {
+    const across = R() < 0.5, n = 6 + Math.floor(R() * 14);
+    for (let i = 0; i < n; i++) {
+      if (across) { const x = Math.round(i * W2 / n); rects.push({ x, y: 0, w: Math.round((i + 1) * W2 / n) - x, h: H2 }); }
+      else { const y = Math.round(i * H2 / n); rects.push({ x: 0, y, w: W2, h: Math.round((i + 1) * H2 / n) - y }); }
+    }
+    order = across ? 'cols' : 'rows';
+  } else {
+    // buckets: anything from three huge tiles to dozens of small ones, square or not
+    const cssTile = it.ro ? 64 : [22, 30, 44, 64, 96, 140, 220][Math.floor(R() * 7)];
+    const shape = it.ro ? 1 : [1, 1, 1, 1.7, 0.6][Math.floor(R() * 5)];
+    let tw = cssTile * d * Math.sqrt(shape), th = cssTile * d / Math.sqrt(shape);
+    while ((W2 / tw) * (H2 / th) > 150) { tw *= 1.15; th *= 1.15; }       // keep to ~150 tiles at most
+    const cols = Math.max(1, Math.round(W2 / tw)), rows = Math.max(1, Math.round(H2 / th));
+    if (cols * rows < 3) return bucketRender(it, im, sx, sy, sw, sh, W2, H2, d, 'bands');
+    for (let r = 0; r < rows; r++) for (let c2 = 0; c2 < cols; c2++) {
+      const x = Math.round(c2 * W2 / cols), y = Math.round(r * H2 / rows);
+      rects.push({ x, y, w: Math.round((c2 + 1) * W2 / cols) - x, h: Math.round((r + 1) * H2 / rows) - y });
+    }
+  }
+  const threads = fam === 'bands' ? 1 + Math.floor(R() * 2) : Math.min(rects.length, 2 + Math.floor(R() * 7));
+  const total = 1200 + R() * 2000;                                  // 1.2–3.2 s for the whole image
+  const preview = R() < 0.35, readout = R() < 0.4, mono = !it.ro && R() < 0.2;
   const ACID = (getComputedStyle(document.documentElement).getPropertyValue('--acid').trim() || '#5cf03a');
   const inkOf = k => mono ? '#3a3a3e' : ACID;   // the accent; a few pieces render in grey
-  const tiles = [];
-  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-    const nx = (c + 0.5) / cols - 0.5, ny = (r + 0.5) / rows - 0.5;
+  const tiles = rects.map(rc => {
+    const nx = (rc.x + rc.w / 2) / W2 - 0.5, ny = (rc.y + rc.h / 2) / H2 - 0.5;
     let key;
-    if (order === 'rows') key = r * cols + c;
-    else if (order === 'cols') key = c * rows + r;
+    if (order === 'rows') key = rc.y * 4 + rc.x / W2;
+    else if (order === 'cols') key = rc.x * 4 + rc.y / H2;
     else if (order === 'scatter') key = R();
-    else if (order === 'centre') key = Math.hypot(nx, ny * rows / cols) + R() * 0.02;
-    else if (order === 'diagonal') key = c / cols + r / rows + R() * 0.05;
-    else { const ring = Math.max(Math.abs(nx) * cols, Math.abs(ny) * rows); key = Math.round(ring) * 10 + (Math.atan2(ny, nx) + Math.PI) / (2 * Math.PI); }
-    tiles.push({ c, r, key });
-  }
+    else if (order === 'centre') key = Math.hypot(nx, ny * H2 / W2) + R() * 0.02;
+    else if (order === 'diagonal') key = nx + ny + R() * 0.05;
+    else if (order === 'detail') key = rc.w * rc.h + R() * 10;          // the busiest (smallest) blocks first
+    else { const ring = Math.max(Math.abs(nx) * W2, Math.abs(ny) * H2) / Math.min(W2, H2); key = Math.round(ring * 6) * 10 + (Math.atan2(ny, nx) + Math.PI) / (2 * Math.PI); }
+    return { ...rc, key };
+  });
   tiles.sort((a, b) => a.key - b.key);
-  const per = Math.max(120, Math.min(520, total * threads / tiles.length));
+  const area = W2 * H2;
   const free = Array.from({ length: threads }, () => 0);
   tiles.forEach(t => {
     let k = 0; for (let i = 1; i < threads; i++) if (free[i] < free[k]) k = i;
-    t.dur = per * (0.6 + R() * 0.8); t.start = free[k] + R() * 20; t.end = t.start + t.dur; t.thread = k; free[k] = t.end;
+    const share = total * threads * (t.w * t.h) / area;               // bigger tiles take longer
+    t.dur = Math.max(110, Math.min(900, share * (0.7 + R() * 0.6)));
+    t.start = free[k] + R() * 20; t.end = t.start + t.dur; t.thread = k; free[k] = t.end;
     t.gx = Math.floor(R() * 200); t.gy = Math.floor(R() * 200);
   });
   const end = Math.max(...free) + 60;
-  // unrendered state: a pale grey sheet with the bucket grid drawn on it
+  // unrendered state: a pale sheet with the tile layout faintly drawn on it
   const c = document.createElement('canvas'); c.className = 'resolve'; c.width = W2; c.height = H2;
   it.el.appendChild(c);
   const g2 = c.getContext('2d');
@@ -1012,14 +1136,13 @@ function bucketRender(it, im, sx, sy, sw, sh, W2, H2, d) {
   const bg = base.getContext('2d');
   bg.fillStyle = '#ececec'; bg.fillRect(0, 0, W2, H2);
   if (preview) { bg.globalAlpha = 0.18; bg.filter = `blur(${Math.round(9 * d)}px)`; bg.drawImage(im, sx, sy, sw, sh, 0, 0, W2, H2); bg.filter = 'none'; bg.globalAlpha = 1; }
-  bg.strokeStyle = 'rgba(0,0,0,0.07)'; bg.lineWidth = 1;
-  bg.beginPath();
-  for (let i = 1; i < cols; i++) { const x = Math.round(i * tw) + 0.5; bg.moveTo(x, 0); bg.lineTo(x, H2); }
-  for (let j = 1; j < rows; j++) { const y = Math.round(j * th) + 0.5; bg.moveTo(0, y); bg.lineTo(W2, y); }
-  bg.stroke();
+  if (fam !== 'bands') {
+    bg.strokeStyle = 'rgba(0,0,0,0.07)'; bg.lineWidth = 1;
+    bg.beginPath(); tiles.forEach(t => bg.rect(t.x + 0.5, t.y + 0.5, t.w, t.h)); bg.stroke();
+  }
   g2.drawImage(base, 0, 0);
   const lw = Math.max(1, Math.round(1.25 * d)), G = grain();
-  const rect = t => [Math.round(t.c * tw), Math.round(t.r * th), Math.round((t.c + 1) * tw) - Math.round(t.c * tw), Math.round((t.r + 1) * th) - Math.round(t.r * th)];
+  const rect = t => [t.x, t.y, t.w, t.h];
   const fx = sw / W2, fy = sh / H2;
   const paintImage = (x, y, w, h) => { if (w > 0 && h > 0) g2.drawImage(im, sx + x * fx, sy + y * fy, w * fx, h * fy, x, y, w, h); };
   const done = new Set(), t0 = performance.now();
@@ -1038,10 +1161,17 @@ function bucketRender(it, im, sx, sy, sw, sh, W2, H2, d) {
       if (t >= tl.end) { g2.drawImage(base, x, y, w, h, x, y, w, h); paintImage(x, y, w, h); done.add(tl); doneCount++; continue; }
       const p = (t - tl.start) / tl.dur, ink = inkOf(tl.thread);
       g2.drawImage(base, x, y, w, h, x, y, w, h);
-      // 1. a flat colour square appears (the bucket being taken by a thread)
+      if (fam === 'bands') {
+        // a band renders like a scanline sweep, with a thin bright line at its front
+        const across = w < W2;
+        const f = across ? Math.round(w * p) : Math.round(h * p);
+        across ? paintImage(x, y, f, h) : paintImage(x, y, w, f);
+        g2.fillStyle = ink;
+        across ? g2.fillRect(x + f, y, lw, h) : g2.fillRect(x, y + f, w, lw);
+        continue;
+      }
       g2.fillStyle = hexA(ink.length === 7 ? ink : '#3a3a3e', 0.28 * (1 - Math.min(1, p / 0.35)) + 0.06);
       g2.fillRect(x, y, w, h);
-      // 2. samples arrive: the image, under grain that clears as the bucket converges
       if (p > 0.12) {
         const q = (p - 0.12) / 0.88;
         g2.globalAlpha = 0.25 + 0.75 * q; paintImage(x, y, w, h); g2.globalAlpha = 1;
@@ -1049,7 +1179,6 @@ function bucketRender(it, im, sx, sy, sw, sh, W2, H2, d) {
         g2.drawImage(G, (tl.gx + Math.floor(t / 40) * 37) % 200, (tl.gy + Math.floor(t / 40) * 53) % 200, Math.min(56, w), Math.min(56, h), x, y, w, h);
         g2.globalAlpha = 1;
       }
-      // 3. the bucket's frame: a fine outline and stronger corner brackets in the thread's colour
       const o = lw / 2, L = Math.max(5 * d, Math.min(w, h) * 0.3);
       g2.strokeStyle = hexA(ink.length === 7 ? ink : '#3a3a3e', 0.45); g2.lineWidth = Math.max(1, Math.round(d * 0.75));
       g2.strokeRect(x + o, y + o, w - lw, h - lw);
@@ -1063,8 +1192,8 @@ function bucketRender(it, im, sx, sy, sw, sh, W2, H2, d) {
     }
     if (readout && t < end) {
       const pct = Math.round(doneCount / tiles.length * 100), fs = Math.round(9 * d);
-      const label = `Rendering ${pct}%   ${(t / 1000).toFixed(1)} s   ${threads} threads`;
-      g2.font = `${fs}px "ABC Diatype", "Helvetica Neue", Helvetica, Arial, sans-serif`;
+      const label = fam === 'bands' ? `Scanline   ${pct}%   ${(t / 1000).toFixed(1)} s` : `${fam === 'adaptive' ? 'Adaptive' : 'Bucket'}   ${pct}%   ${tiles.length} tiles   ${threads} threads`;
+      g2.font = `${fs}px ${getComputedStyle(document.documentElement).getPropertyValue('--font-mono')}`;
       const tw2 = Math.ceil(g2.measureText(label).width) + 8 * d, x = Math.round(6 * d), y = H2 - Math.round(6 * d) - fs - 4 * d;
       g2.fillStyle = 'rgba(255,255,255,0.86)'; g2.fillRect(x, y, tw2, fs + 6 * d);
       g2.fillStyle = 'rgba(20,20,22,0.85)'; g2.fillText(label, x + 4 * d, y + fs + 1 * d);
@@ -1084,7 +1213,7 @@ function startResolve(it) {
   const ar = H2 / W2, iar = im.naturalHeight / im.naturalWidth;
   let sx = 0, sy = 0, sw = im.naturalWidth, sh = im.naturalHeight;
   if (iar > ar) { sh = sw * ar; sy = (im.naturalHeight - sh) / 2; } else { sw = sh / ar; sx = (im.naturalWidth - sw) / 2; }
-  if (!it.t) { bucketRender(it, im, sx, sy, sw, sh, W2, H2, d); return; }
+  if (!it.t) { renderPiece(it, im, sx, sy, sw, sh, W2, H2, d); return; }
   let lines;
   try { lines = contours(im, sx, sy, sw, sh, W2, H2); } catch (_) { it.resolving = false; finishResolve(it); return; }
   const c = document.createElement('canvas'); c.className = 'resolve'; c.width = W2; c.height = H2;
