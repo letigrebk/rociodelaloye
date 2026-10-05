@@ -96,7 +96,7 @@ a { color: inherit; text-decoration: none; }
 
 /* Trace: a piece first appears as a fine line drawing of itself on white; then a
    single hairline scans down and the real image is revealed behind it. */
-.piece.unresolved { background: transparent; }
+.piece.unresolved.trace { background: transparent; }
 .piece.unresolved img, .piece.unresolved video { opacity: 0; }
 .piece .resolve { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; transition: opacity .25s linear; }
 .piece .resolve.done { opacity: 0; }
@@ -328,7 +328,7 @@ body.show-index .sound, body.show-about .sound, body.show-project .sound { displ
   <button type="button" data-s="2" aria-pressed="false">3</button>
   <button type="button" data-s="3" aria-pressed="false">4</button>
   <span class="sep">Load</span>
-  <button type="button" data-r="resolve" aria-pressed="false">Trace</button>
+  <button type="button" data-r="resolve" aria-pressed="false">Render</button>
   <button type="button" data-r="fade" aria-pressed="false">Fade</button>
 </div>
 <div class="screening" id="screening" role="dialog" aria-label="Screening" aria-hidden="true">
@@ -392,7 +392,8 @@ const TEXTS = {
    d is depth: 0 far (drifts slower), 1 middle, 2 near (drifts a little faster).
    v marks a video loop; `note` overrides the medium in the caption.
    t marks the few pieces that draw themselves the first time they are seen ('down' or
-   'right', the direction of the reveal); tp is their pace (1 = about 1.4 s). */
+   'right', the direction of the reveal); tp is their pace (1 = about 1.4 s). Every other
+   piece bucket-renders in its own way; ro fixes its bucket order where it matters. */
 const W = 4600, H = 3200;
 const START = { x: 2300, y: 1600 }, START_PHONE = { x: 2150, y: 1580 };
 /* Ways in: the first visit always opens on the first; later visits open on one of the
@@ -406,7 +407,7 @@ const SPAWNS = [
 const L = 9 / 16, P45 = 1.25;
 const PIECES = [
   // Opening frame: one dominant image, a tall loop beside it, a small fragment, work bleeding in at the edges
-  { id: 'ih-pool',       p: 'ih',  x: 2030, y: 1600, w: 760, r: L,    d: 1 },
+  { id: 'ih-pool',       p: 'ih',  x: 2030, y: 1600, w: 760, r: L,    d: 1, ro: 'spiral' },
   { id: 'ih-v-waterpark',p: 'ih',  x: 2690, y: 1470, w: 250, r: P45,  d: 2, v: 1 },
   { id: 'gs-hand',       p: 'gs',  x: 2850, y: 1880, w: 150, r: 432/786, d: 0, t: 'down', tp: 0.9 },
   { id: 'sim-city',      p: 'sim', x: 1420, y: 1170, w: 600, r: L,    d: 1, t: 'right', tp: 1.1 },
@@ -700,7 +701,7 @@ function draw() {
     it.el.style.transform = `translate3d(${it.sx.toFixed(2)}px, ${it.sy.toFixed(2)}px, 0)`;
     const near = it.sx < vw * 1.6 && it.sx + w > -vw * 0.6 && it.sy < vh * 1.6 && it.sy + h > -vh * 0.6;
     if (near && !it.loaded) load(it);
-    if (!it.resolved && it.t && it.loaded && loadMode === 'resolve') {
+    if (!it.resolved && it.loaded && loadMode === 'resolve') {
       const onScreen = it.sx < vw && it.sx + w > 0 && it.sy < vh && it.sy + h > 0;
       if (onScreen) { it.seen = true; if (it.still) startResolve(it); }
     }
@@ -800,8 +801,8 @@ function load(it) {
   it.loaded = true;
   if (it.v) { it.media.poster = it.media.dataset.poster; it.media.src = it.media.dataset.src; it.media.preload = 'metadata'; }
   else { it.media.src = it.media.dataset.src; }
-  if (loadMode === 'resolve' && it.t && !reduce && !it.resolved) {
-    it.el.classList.add('unresolved');
+  if (loadMode === 'resolve' && !reduce && !it.resolved) {
+    it.el.classList.add('unresolved'); if (it.t) it.el.classList.add('trace');
     const im = new Image();                      // the still (or the loop's poster frame) to resolve from
     im.decoding = 'async';
     im.onload = () => { it.still = im; if (it.seen) startResolve(it); };
@@ -810,7 +811,7 @@ function load(it) {
   }
 }
 
-/* ---------- Trace ----------
+/* ---------- Trace (the seven pieces marked t) ----------
    The first time a piece is on screen (once its image has arrived):
    1. its contours, found from the image itself, trace in from top to bottom as
       fine dark hairlines on white (about 0.5 s);
@@ -864,6 +865,109 @@ function contours(im, sx, sy, sw, sh, W2, H2) {
   cx.filter = 'none'; cx.clearRect(0, 0, w, h); cx.putImageData(out, 0, 0);
   return cv;
 }
+/* ---------- Bucket render ----------
+   After Cinema 4D's picture viewer: the image renders in square buckets, a few at a
+   time (one per render thread); an active bucket is marked by corner brackets in its
+   thread's colour and fills scanline by scanline, with a thin progress rule under it.
+   Unrendered areas stay pale. Every piece draws its own settings from its name, so no
+   two render alike: bucket order and size, thread count, pace, bracket colours, a faint
+   preview pass underneath on some, a small render readout on others. */
+function hashStr(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function seededR(seed) { let x = seed || 1; return () => { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; }; }
+const BUCKET_INKS = ['#ff4fa3', '#1fc6d4', '#f5a300', '#7a5cff', '#1fae6a', '#ff5a1f'];
+const BUCKET_ORDERS = ['spiral', 'rows', 'cols', 'scatter', 'centre', 'diagonal'];
+function bucketRender(it, im, sx, sy, sw, sh, W2, H2, d) {
+  const R = seededR(hashStr(it.id + 'bucket'));
+  const pick = BUCKET_ORDERS[Math.floor(R() * BUCKET_ORDERS.length)], order = it.ro || pick;
+  const cssTile = [24, 30, 36, 44, 52, 64][Math.floor(R() * 6)];
+  // big pieces get bigger buckets: never more than 11 across or down, so every piece finishes in time
+  const tile = Math.max(cssTile * d, W2 / 11, H2 / 11);
+  const cols = Math.max(3, Math.round(W2 / tile)), rows = Math.max(2, Math.round(H2 / tile));
+  const tw = W2 / cols, th = H2 / rows;
+  const threads = 3 + Math.floor(R() * 6);                          // 3–8 buckets at once
+  const total = 1100 + R() * 1500;                                  // 1.1–2.6 s for the whole image
+  const preview = R() < 0.4, readout = R() < 0.3, mono = R() < 0.25;
+  const inkOffset = Math.floor(R() * BUCKET_INKS.length);
+  const inkOf = k => mono ? 'rgba(30,30,32,0.7)' : BUCKET_INKS[(inkOffset + k) % BUCKET_INKS.length];
+  // the order buckets are taken in
+  const tiles = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const nx = (c + 0.5) / cols - 0.5, ny = (r + 0.5) / rows - 0.5;
+    let key;
+    if (order === 'rows') key = r * cols + c;
+    else if (order === 'cols') key = c * rows + r;
+    else if (order === 'scatter') key = R();
+    else if (order === 'centre') key = Math.hypot(nx, ny * rows / cols) + R() * 0.02;
+    else if (order === 'diagonal') key = c / cols + r / rows + R() * 0.05;
+    else { const ring = Math.max(Math.abs(nx) * cols, Math.abs(ny) * rows); key = Math.round(ring) * 10 + (Math.atan2(ny, nx) + Math.PI) / (2 * Math.PI); }
+    tiles.push({ c, r, key, dur: 0 });
+  }
+  tiles.sort((a, b) => a.key - b.key);
+  const per = Math.max(45, Math.min(300, total * threads / tiles.length));
+  tiles.forEach(t => { t.dur = per * (0.55 + R() * 0.9); });
+  // schedule onto threads
+  const free = Array.from({ length: threads }, () => 0);
+  tiles.forEach(t => {
+    let k = 0; for (let i = 1; i < threads; i++) if (free[i] < free[k]) k = i;
+    t.start = free[k] + R() * 12; t.end = t.start + t.dur; t.thread = k; free[k] = t.end;
+  });
+  const end = Math.max(...free) + 40;
+  // canvas, and an unrendered base: pale, with a soft low-resolution preview on some pieces
+  const c = document.createElement('canvas'); c.className = 'resolve'; c.width = W2; c.height = H2;
+  it.el.appendChild(c);
+  const g2 = c.getContext('2d');
+  const base = document.createElement('canvas'); base.width = W2; base.height = H2;
+  const bg = base.getContext('2d');
+  bg.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--wash').trim() || '#f5f5f5';
+  bg.fillRect(0, 0, W2, H2);
+  if (preview) { bg.globalAlpha = 0.16; bg.filter = `blur(${Math.round(10 * d)}px)`; bg.drawImage(im, sx, sy, sw, sh, 0, 0, W2, H2); bg.filter = 'none'; bg.globalAlpha = 1; }
+  g2.drawImage(base, 0, 0);
+  const lw = Math.max(1, Math.round(d));
+  const rect = t => [Math.round(t.c * tw), Math.round(t.r * th), Math.round((t.c + 1) * tw) - Math.round(t.c * tw), Math.round((t.r + 1) * th) - Math.round(t.r * th)];
+  const fx = sw / W2, fy = sh / H2;
+  const paintImage = (x, y, w, h) => { if (w > 0 && h > 0) g2.drawImage(im, sx + x * fx, sy + y * fy, w * fx, h * fy, x, y, w, h); };
+  const done = new Set(), t0 = performance.now();
+  let lastReadout = null;
+  const tick = now => {
+    const t = now - t0;
+    // clear the readout area from the last frame (it sits over rendered or unrendered pixels)
+    if (lastReadout) { const [x, y, w, h] = lastReadout; g2.drawImage(base, x, y, w, h, x, y, w, h);
+      tiles.forEach(tl => { if (done.has(tl)) { const [a, b, cw, ch] = rect(tl); const ix = Math.max(a, x), iy = Math.max(b, y), ax = Math.min(a + cw, x + w), ay = Math.min(b + ch, y + h); if (ax > ix && ay > iy) paintImage(ix, iy, ax - ix, ay - iy); } }); }
+    let doneCount = 0;
+    for (const tl of tiles) {
+      if (done.has(tl)) { doneCount++; continue; }
+      if (t < tl.start) continue;
+      const [x, y, w, h] = rect(tl);
+      g2.drawImage(base, x, y, w, h, x, y, w, h);
+      if (t >= tl.end) { paintImage(x, y, w, h); done.add(tl); doneCount++; continue; }
+      // rendering: scanlines fill the bucket top to bottom
+      const p = (t - tl.start) / tl.dur;
+      paintImage(x, y, w, Math.round(h * p));
+      const ink = inkOf(tl.thread), L = Math.max(4 * d, Math.min(w, h) * 0.28);
+      g2.strokeStyle = ink; g2.lineWidth = lw;
+      g2.beginPath();
+      const o = lw / 2;
+      g2.moveTo(x + o, y + L); g2.lineTo(x + o, y + o); g2.lineTo(x + L, y + o);
+      g2.moveTo(x + w - L, y + o); g2.lineTo(x + w - o, y + o); g2.lineTo(x + w - o, y + L);
+      g2.moveTo(x + o, y + h - L); g2.lineTo(x + o, y + h - o); g2.lineTo(x + L, y + h - o);
+      g2.moveTo(x + w - L, y + h - o); g2.lineTo(x + w - o, y + h - o); g2.lineTo(x + w - o, y + h - L);
+      g2.stroke();
+      g2.fillStyle = ink; g2.fillRect(x + o + lw, y + h - 3 * lw, Math.max(1, (w - 3 * lw) * p), lw);   // progress rule
+    }
+    if (readout && t < end) {
+      const pct = Math.round(doneCount / tiles.length * 100), fs = Math.round(9 * d);
+      const label = `Rendering ${String(pct).padStart(2, ' ')}%  ${(t / 1000).toFixed(1)}s`;
+      g2.font = `${fs}px "ABC Diatype", "Helvetica Neue", Helvetica, Arial, sans-serif`;
+      const tw2 = Math.ceil(g2.measureText(label).width) + 8 * d, x = Math.round(6 * d), y = H2 - Math.round(6 * d) - fs - 4 * d;
+      g2.fillStyle = 'rgba(255,255,255,0.82)'; g2.fillRect(x, y, tw2, fs + 6 * d);
+      g2.fillStyle = 'rgba(20,20,22,0.8)'; g2.fillText(label, x + 4 * d, y + fs + 1 * d);
+      lastReadout = [x, y, tw2, fs + 6 * d];
+    }
+    if (t < end) requestAnimationFrame(tick);
+    else { it.resolving = false; finishResolve(it); }
+  };
+  requestAnimationFrame(tick);
+}
 function startResolve(it) {
   if (it.resolved || it.resolving || !it.still) return;
   it.resolving = true;
@@ -873,6 +977,7 @@ function startResolve(it) {
   const ar = H2 / W2, iar = im.naturalHeight / im.naturalWidth;
   let sx = 0, sy = 0, sw = im.naturalWidth, sh = im.naturalHeight;
   if (iar > ar) { sh = sw * ar; sy = (im.naturalHeight - sh) / 2; } else { sw = sh / ar; sx = (im.naturalWidth - sw) / 2; }
+  if (!it.t) { bucketRender(it, im, sx, sy, sw, sh, W2, H2, d); return; }
   let lines;
   try { lines = contours(im, sx, sy, sw, sh, W2, H2); } catch (_) { it.resolving = false; finishResolve(it); return; }
   const c = document.createElement('canvas'); c.className = 'resolve'; c.width = W2; c.height = H2;
