@@ -390,7 +390,9 @@ const TEXTS = {
 /* The composition, placed by hand on a 4600 × 3200 surface (units are pixels on a
    1440-wide screen). x/y is the centre of each piece, w its width, r its height/width.
    d is depth: 0 far (drifts slower), 1 middle, 2 near (drifts a little faster).
-   v marks a video loop; `note` overrides the medium in the caption. */
+   v marks a video loop; `note` overrides the medium in the caption.
+   t marks the few pieces that draw themselves the first time they are seen ('down' or
+   'right', the direction of the reveal); tp is their pace (1 = about 1.4 s). */
 const W = 4600, H = 3200;
 const START = { x: 2300, y: 1600 }, START_PHONE = { x: 2150, y: 1580 };
 /* Ways in: the first visit always opens on the first; later visits open on one of the
@@ -406,21 +408,21 @@ const PIECES = [
   // Opening frame: one dominant image, a tall loop beside it, a small fragment, work bleeding in at the edges
   { id: 'ih-pool',       p: 'ih',  x: 2030, y: 1600, w: 760, r: L,    d: 1 },
   { id: 'ih-v-waterpark',p: 'ih',  x: 2690, y: 1470, w: 250, r: P45,  d: 2, v: 1 },
-  { id: 'gs-hand',       p: 'gs',  x: 2850, y: 1880, w: 150, r: 432/786, d: 0 },
-  { id: 'sim-city',      p: 'sim', x: 1420, y: 1170, w: 600, r: L,    d: 1 },
+  { id: 'gs-hand',       p: 'gs',  x: 2850, y: 1880, w: 150, r: 432/786, d: 0, t: 'down', tp: 0.9 },
+  { id: 'sim-city',      p: 'sim', x: 1420, y: 1170, w: 600, r: L,    d: 1, t: 'right', tp: 1.1 },
   { id: 'ih-lounger',    p: 'ih',  x: 2480, y: 2130, w: 400, r: L,    d: 0 },
 
   // Indoor Horizon, east of the opening
   { id: 'ih-v-beach',    p: 'ih',  x: 3330, y: 1620, w: 300, r: P45,  d: 1, v: 1 },
   { id: 'ih-waterpark',  p: 'ih',  x: 3520, y: 1050, w: 540, r: L,    d: 1 },
-  { id: 'ih-comfort',    p: 'ih',  x: 3820, y: 2380, w: 900, r: L,    d: 1 },
+  { id: 'ih-comfort',    p: 'ih',  x: 3820, y: 2380, w: 900, r: L,    d: 1, t: 'down', tp: 1.15 },
   { id: 'ih-v-card',     p: 'ih',  x: 3120, y: 2470, w: 190, r: P45,  d: 2, v: 1 },
   { id: 'ih-v-key',      p: 'ih',  x: 4180, y: 1560, w: 400, r: L,    d: 0, v: 1, a: 1 },
   { id: 'ih-v-pool',     p: 'ih',  x: 2140, y: 2430, w: 260, r: P45,  d: 1, v: 1 },
-  { id: 'ih-domes',      p: 'ih',  x: 2760, y: 760,  w: 440, r: L,    d: 0 },
+  { id: 'ih-domes',      p: 'ih',  x: 2760, y: 760,  w: 440, r: L,    d: 0, t: 'down', tp: 1.25 },
 
   // Anima_C0de, north-east
-  { id: 'ac-base',       p: 'ac',  x: 3700, y: 520,  w: 980, r: L,    d: 1 },
+  { id: 'ac-base',       p: 'ac',  x: 3700, y: 520,  w: 980, r: L,    d: 1, t: 'right', tp: 1.2 },
   { id: 'ac-title',      p: 'ac',  x: 4380, y: 1010,  w: 340, r: L,    d: 2 },
   { id: 'ac-tiger',      p: 'ac',  x: 4400, y: 190,  w: 300, r: L,    d: 0 },
   { id: 'ac-deck',       p: 'ac',  x: 2330, y: 330,  w: 460, r: L,    d: 1 },
@@ -432,7 +434,7 @@ const PIECES = [
   { id: 'sim-pink',      p: 'sim', x: 760,  y: 760,  w: 580, r: L,    d: 1 },
   { id: 'sim-bubbles',   p: 'sim', x: 1420, y: 470,  w: 360, r: L,    d: 0 },
   { id: 'sim-rocks',     p: 'sim', x: 330,  y: 1250, w: 300, r: L,    d: 0 },
-  { id: 'sim-install',   p: 'sim', x: 1880, y: 760,  w: 240, r: 1.5,  d: 1, note: 'Installation view' },
+  { id: 'sim-install',   p: 'sim', x: 1880, y: 760,  w: 240, r: 1.5,  d: 1, note: 'Installation view', t: 'down', tp: 1.0 },
 
   // Ghost//Sintax, south-west
   { id: 'gs-v-hand',     p: 'gs',  x: 1000, y: 2640, w: 680, r: L,    d: 1, v: 1, a: 1 },
@@ -443,7 +445,7 @@ const PIECES = [
   { id: 'gs-install',    p: 'gs',  x: 1640, y: 2190, w: 200, r: 1.5,  d: 0, note: 'Installation view' },
 
   // Faith in Fakes, south
-  { id: 'fif-slides',    p: 'fif', x: 2780, y: 2980, w: 640, r: 0.625, d: 1 },
+  { id: 'fif-slides',    p: 'fif', x: 2780, y: 2980, w: 640, r: 0.625, d: 1, t: 'right', tp: 1.3 },
   { id: 'fif-aluminum',  p: 'fif', x: 3650, y: 3000, w: 330, r: 0.625, d: 0, note: 'Print on aluminum' }
 ];
 const DEPTH = [0.9, 1, 1.08];
@@ -698,7 +700,7 @@ function draw() {
     it.el.style.transform = `translate3d(${it.sx.toFixed(2)}px, ${it.sy.toFixed(2)}px, 0)`;
     const near = it.sx < vw * 1.6 && it.sx + w > -vw * 0.6 && it.sy < vh * 1.6 && it.sy + h > -vh * 0.6;
     if (near && !it.loaded) load(it);
-    if (!it.resolved && it.loaded && loadMode === 'resolve') {
+    if (!it.resolved && it.t && it.loaded && loadMode === 'resolve') {
       const onScreen = it.sx < vw && it.sx + w > 0 && it.sy < vh && it.sy + h > 0;
       if (onScreen) { it.seen = true; if (it.still) startResolve(it); }
     }
@@ -798,7 +800,7 @@ function load(it) {
   it.loaded = true;
   if (it.v) { it.media.poster = it.media.dataset.poster; it.media.src = it.media.dataset.src; it.media.preload = 'metadata'; }
   else { it.media.src = it.media.dataset.src; }
-  if (loadMode === 'resolve' && !reduce && !it.resolved) {
+  if (loadMode === 'resolve' && it.t && !reduce && !it.resolved) {
     it.el.classList.add('unresolved');
     const im = new Image();                      // the still (or the loop's poster frame) to resolve from
     im.decoding = 'async';
@@ -878,17 +880,22 @@ function startResolve(it) {
   const g2 = c.getContext('2d');
   g2.imageSmoothingEnabled = true; g2.imageSmoothingQuality = 'high';
   const ease = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-  const t0 = performance.now(), scanAt = TRACE.draw + TRACE.hold, end = scanAt + TRACE.scan;
+  const pace = it.tp || 1, across = it.t === 'right', span = across ? W2 : H2;
+  const TD = TRACE.draw * pace, TH = TRACE.hold * pace, TS = TRACE.scan * pace;
+  const band = (a, b) => across ? g2.rect(a, 0, b - a, H2) : g2.rect(0, a, W2, b - a);
+  const t0 = performance.now(), scanAt = TD + TH, end = scanAt + TS;
   const tick = now => {
     const t = now - t0;
     g2.clearRect(0, 0, W2, H2);
-    const drawn = ease(Math.min(1, t / TRACE.draw)) * H2;                    // how far the drawing has traced
-    const scan = t < scanAt ? 0 : ease(Math.min(1, (t - scanAt) / TRACE.scan)) * H2;   // how far the image is revealed
-    if (scan > 0) { g2.save(); g2.beginPath(); g2.rect(0, 0, W2, scan); g2.clip(); g2.drawImage(im, sx, sy, sw, sh, 0, 0, W2, H2); g2.restore(); }
-    const top = scan, bottom = Math.max(scan, drawn);
-    if (bottom > top) { g2.save(); g2.beginPath(); g2.rect(0, top, W2, bottom - top); g2.clip(); g2.drawImage(lines, 0, 0, W2, H2); g2.restore(); }
-    if (scan > 0 && scan < H2) {                                             // the scanning hairline
-      g2.fillStyle = 'rgba(20,20,22,0.55)'; g2.fillRect(0, Math.round(scan), W2, Math.max(1, Math.round(d)));
+    const drawn = ease(Math.min(1, t / TD)) * span;                          // how far the drawing has traced
+    const scan = t < scanAt ? 0 : ease(Math.min(1, (t - scanAt) / TS)) * span;   // how far the image is revealed
+    if (scan > 0) { g2.save(); g2.beginPath(); band(0, scan); g2.clip(); g2.drawImage(im, sx, sy, sw, sh, 0, 0, W2, H2); g2.restore(); }
+    const lo = scan, hi = Math.max(scan, drawn);
+    if (hi > lo) { g2.save(); g2.beginPath(); band(lo, hi); g2.clip(); g2.drawImage(lines, 0, 0, W2, H2); g2.restore(); }
+    if (scan > 0 && scan < span) {                                           // the scanning hairline
+      g2.fillStyle = 'rgba(20,20,22,0.55)';
+      const px = Math.round(scan), th = Math.max(1, Math.round(d));
+      across ? g2.fillRect(px, 0, th, H2) : g2.fillRect(0, px, W2, th);
     }
     if (t < end) requestAnimationFrame(tick);
     else { it.resolving = false; finishResolve(it); }
