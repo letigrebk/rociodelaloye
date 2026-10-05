@@ -3,7 +3,7 @@
 <title>Rocío Delaloye</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500&family=DM+Mono:wght@400&display=swap">
 <style>
 /* Layout: one fixed full-screen field of work you pan through, under a fixed header;
    INDEX is a plain scrolling list over the same body of work.
@@ -15,6 +15,11 @@
   --line: #e0e0e0;        /* the site's accent, 88% grey */
   --wash: #f5f5f5;        /* the site's light accent, placeholder behind loading work */
   --nav-air: 245, 246, 248;   /* cool off-white behind the navigation (RGB, used with alpha) */
+  --acid: #5cf03a;                           /* the one accent: acid green */
+  --acid-glass: rgba(92, 240, 58, 0.9);      /* the info panel */
+  /* The data voice (dates, durations, timecodes, labels): ABC Diatype Mono, same family as
+     the text; licensed, so read locally until the web files are added; DM Mono stands in. */
+  --font-mono: "ABC Diatype Mono", "ABCDiatypeMono-Regular", "DM Mono", ui-monospace, Menlo, monospace;
   --glass: rgba(240, 240, 240, 0.31);        /* navigation pills: flat, see-through grey glass */
   --glass-on: rgba(225, 225, 225, 0.55);     /* the current view, and hover */
   /* The navigation's face: ABC Monument Grotesk Medium (Dinamo, licensed; read from the
@@ -70,7 +75,8 @@ a { color: inherit; text-decoration: none; }
   -webkit-font-smoothing: antialiased;
   transition: background-color .2s ease;
 }
-.pill:hover, .pill[aria-current="true"] { background-color: var(--glass-on); }
+.pill:hover { background-color: var(--glass-on); }
+.pill[aria-current="true"] { background-color: var(--acid); }
 :focus-visible { outline: 1px solid var(--ink); outline-offset: 2px; }
 
 /* The field */
@@ -113,14 +119,22 @@ a { color: inherit; text-decoration: none; }
   background: radial-gradient(ellipse 76% 74% at 50% 52%, color-mix(in srgb, var(--bg) 0%, transparent) 66%, color-mix(in srgb, var(--bg) 80%, transparent) 100%);
 }
 
-/* One quiet line under the work */
+/* Info panel: a small translucent acid-green sheet over the corner of the work,
+   in the data voice; it only appears when asked (hover, focus, or nearest on phones). */
 .cap {
   position: fixed; left: 0; top: 0; z-index: 20; pointer-events: none;
-  font-size: var(--fs-s); line-height: 1.5; color: var(--mute);
-  white-space: nowrap; opacity: 0; transition: opacity .35s var(--ease);
+  font-family: var(--font-mono); font-size: 11px; line-height: 1.45; letter-spacing: -0.01em; color: var(--ink);
+  background: var(--acid-glass); border-radius: var(--radius);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  padding: 8px 10px 9px; min-width: 150px; max-width: 240px;
+  opacity: 0; transition: opacity .25s var(--ease), clip-path .35s var(--ease);
+  clip-path: inset(0 0 100% 0 round var(--radius));
 }
-.cap.on { opacity: 1; }
-.cap b { font-weight: 400; color: var(--ink); }
+.cap.on { opacity: 1; clip-path: inset(0 0 0 0 round var(--radius)); }
+.cap .r { display: grid; grid-template-columns: 5.5em minmax(0, 1fr); gap: 8px; }
+.cap .r span:first-child { opacity: .55; }
+.cap .t { font-family: var(--font-main); font-size: 13px; letter-spacing: 0; margin-bottom: 4px; }
+@media (prefers-reduced-motion: reduce) { .cap, .cap.on { clip-path: none; } }
 
 /* INDEX: the same work as a plain list */
 .index {
@@ -131,16 +145,21 @@ a { color: inherit; text-decoration: none; }
 body.show-index .index { opacity: 1; visibility: visible; transition: opacity .45s var(--ease); }
 .index-list { list-style: none; margin: 0; padding: 0; max-width: min(58rem, calc(100% - min(30vw, 440px) - 48px)); border-top: 1px solid var(--line); }
 .row a {
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 14rem) 4rem; gap: 16px; align-items: baseline;
+  display: grid; grid-template-columns: 2.5rem minmax(0, 1fr) minmax(0, 15.5rem) 5.5rem 3rem 8.5rem; gap: 16px; align-items: baseline;
   padding: 18px 0 16px; border-bottom: 1px solid var(--line);
 }
 .row .t { font-size: var(--fs-l); line-height: 1.3; }
-.row .m, .row .y { font-size: var(--fs-s); color: var(--mute); }
+.row .m, .row .y, .row .c, .row .d, .row .xy { font-family: var(--font-mono); font-size: 11px; color: var(--mute); }
 .row .y { text-align: right; font-variant-numeric: tabular-nums; }
 .row .soon { font-size: var(--fs-s); color: var(--mute); margin-left: 10px; }
 .index-list:hover .row a { color: var(--mute); }
 .index-list:hover .row a:hover, .index-list .row a:focus-visible { color: var(--ink); }
-.index-list:hover .row a:hover .m, .index-list:hover .row a:hover .y { color: var(--ink); }
+.index-list:hover .row a:hover :is(.m, .y, .c, .d, .xy) { color: var(--ink); }
+.row a:hover .c { background: var(--acid); color: var(--ink); }
+.row .c { justify-self: start; padding: 1px 4px; margin-left: -4px; border-radius: 2px; transition: background .2s ease; }
+.row .xy { text-align: right; }
+.index-head { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr) minmax(0, 15.5rem) 5.5rem 3rem 8.5rem; gap: 16px; font-family: var(--font-mono); font-size: 10px; color: var(--mute); padding: 0 0 8px; max-width: min(58rem, calc(100% - min(30vw, 440px) - 48px)); }
+.index-head span:last-child, .index-head span:nth-child(5) { text-align: right; }
 .peek {
   position: fixed; right: var(--gutter); top: 50%; width: min(30vw, 440px); z-index: 31;
   transform: translateY(-50%); opacity: 0; transition: opacity .3s var(--ease); pointer-events: none;
@@ -170,7 +189,7 @@ body.show-project .modes, body.show-project .hint { display: none; }
 .p-hero .m, .slot .m { display: block; width: 100%; height: auto; object-fit: cover; background: var(--wash); border-radius: var(--radius); }
 .p-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 34rem); gap: 20px 48px; margin: 28px 0 88px; align-items: start; }
 .p-title { font-size: var(--fs-l); line-height: 1.3; font-weight: 400; margin: 0; }
-.p-label { font-size: var(--fs-s); line-height: 1.6; color: var(--mute); margin: 6px 0 0; }
+.p-label { font-family: var(--font-mono); font-size: 11px; line-height: 1.6; color: var(--mute); margin: 6px 0 0; }
 .p-text { font-size: var(--fs-b); line-height: 1.55; margin: 0; max-width: 62ch; }
 .p-top.portrait { display: grid; grid-template-columns: minmax(0, 520px) minmax(0, 1fr); gap: 56px; align-items: end; margin-bottom: 104px; }
 .p-top.portrait .p-hero { width: 100%; }
@@ -230,6 +249,7 @@ body.show-about .about { opacity: 1; visibility: visible; transition: opacity .4
 .sound {
   position: fixed; left: var(--gutter); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); z-index: 25;
   font: inherit; font-size: var(--fs-s); color: var(--mute); background: none; border: 0; padding: 4px 0; cursor: pointer;
+  font-family: var(--font-mono); font-size: 11px;
 }
 .sound:hover, .sound[aria-pressed="true"] { color: var(--ink); }
 body.show-index .sound, body.show-about .sound, body.show-project .sound { display: none; }
@@ -244,6 +264,7 @@ body.show-index .sound, body.show-about .sound, body.show-project .sound { displ
 .screening.on { opacity: 1; visibility: visible; transition: opacity .5s var(--ease); }
 .screening video { width: 100vw; height: 100svh; object-fit: contain; background: var(--screen); cursor: pointer; }
 .screening .bar {
+  font-family: var(--font-mono);
   position: absolute; left: var(--gutter); right: var(--gutter); bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
   display: flex; justify-content: space-between; align-items: baseline; gap: 24px;
   font-size: var(--fs-s); color: color-mix(in srgb, var(--screen-ink) 70%, transparent);
@@ -263,6 +284,7 @@ body.show-index .sound, body.show-about .sound, body.show-project .sound { displ
   position: fixed; left: var(--gutter); bottom: calc(env(safe-area-inset-bottom, 0px) + 44px); z-index: 20;
   font-size: var(--fs-s); color: var(--mute); pointer-events: none; margin: 0;
   transition: opacity .8s var(--ease);
+  font-family: var(--font-mono); font-size: 11px;
 }
 .hint.gone { opacity: 0; }
 
@@ -278,9 +300,13 @@ body.show-index .sound, body.show-about .sound, body.show-project .sound { displ
   .veil { -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
     --m: radial-gradient(ellipse 78% 64% at 50% 50%, transparent 55%, #000 100%); }
   .haze { background: radial-gradient(ellipse 80% 66% at 50% 50%, color-mix(in srgb, var(--bg) 0%, transparent) 58%, color-mix(in srgb, var(--bg) 78%, transparent) 100%); }
-  .row a { grid-template-columns: minmax(0, 1fr) auto; row-gap: 4px; }
-  .row .m { grid-column: 1; grid-row: 2; }
-  .row .y { grid-column: 2; grid-row: 1; }
+  .row a { grid-template-columns: 2.2rem minmax(0, 1fr) auto; row-gap: 4px; gap: 4px 10px; }
+  .row .c { grid-column: 1; grid-row: 1; }
+  .row .t { grid-column: 2; grid-row: 1; }
+  .row .y { grid-column: 3; grid-row: 1; }
+  .row .m { grid-column: 2; grid-row: 2; }
+  .row .d { grid-column: 3; grid-row: 2; text-align: right; }
+  .row .xy, .index-head { display: none; }
   .index { padding-top: calc(env(safe-area-inset-top, 0px) + 88px); }
   .modes span { display: none; }
   .modes { gap: 12px; }
@@ -302,6 +328,7 @@ body.show-index .sound, body.show-about .sound, body.show-project .sound { displ
   </nav>
 </header>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="mblur" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur id="mblurG" stdDeviation="0 0"/></filter></svg>
 <main class="world" id="world" aria-label="All work, arranged as one open field. Drag or scroll to explore."></main>
 <div class="veil" aria-hidden="true"></div>
 <div class="haze" aria-hidden="true"></div>
@@ -338,6 +365,7 @@ body.show-index .sound, body.show-about .sound, body.show-project .sound { displ
 </div>
 
 <section class="index" id="index" aria-label="Index">
+  <div class="index-head" aria-hidden="true"><span>ID</span><span>Title</span><span>Medium</span><span>Duration</span><span>Year</span><span>In the World</span></div>
   <ol class="index-list" id="indexList"></ol>
 </section>
 <section class="about" id="about" aria-label="About" aria-hidden="true">
@@ -644,15 +672,25 @@ function clearHover() {
   hovered = null; world.classList.remove('has-hover'); hideCap(); kick();
 }
 function showCap(it) {
-  const pr = it.proj;
-  cap.innerHTML = `<b>${pr.title}${pr.year ? ', ' + pr.year : ''}</b> — ${it.note || pr.medium}`;
+  const pr = it.proj, lb = LABELS[it.p] || {};
+  const rows = [['Year', pr.year || '—'], ['Medium', it.note || lb.medium || pr.medium]];
+  if (lb.duration) rows.push(['Duration', durationCode(lb.duration)]);
+  rows.push(['Fragment', `${String(items.filter(x => x.p === it.p).indexOf(it) + 1).padStart(2, '0')} / ${String(items.filter(x => x.p === it.p).length).padStart(2, '0')}`]);
+  cap.innerHTML = `<div class="t">${pr.title}</div>` + rows.map(([a, b]) => `<div class="r"><span>${a}</span><span>${b}</span></div>`).join('');
   capFor = it; cap.classList.add('on'); placeCap();
+}
+function durationCode(t) {            // "2 min 14 sec" -> "00:02:14"
+  const m = /(\d+)\s*min/.exec(t), sc = /(\d+)\s*sec/.exec(t);
+  if (!m && !sc) return t;
+  const tot = (m ? +m[1] * 60 : 0) + (sc ? +sc[1] : 0);
+  return [Math.floor(tot / 3600), Math.floor(tot / 60) % 60, tot % 60].map(v => String(v).padStart(2, '0')).join(':');
 }
 function hideCap() { capFor = null; cap.classList.remove('on'); }
 function placeCap() {
   if (!capFor) return;
-  const it = capFor, w = cap.offsetWidth;
-  const x = clamp(it.sx, 12, vw - w - 12), y = Math.min(it.sy + it.h * s + 8, vh - 28);
+  // sits inside the work's lower-left corner, 8 px in; kept on screen
+  const it = capFor, w = cap.offsetWidth, h = cap.offsetHeight;
+  const x = clamp(it.sx + 8, 12, vw - w - 12), y = clamp(it.sy + it.h * s - h - 8, 64, vh - h - 12);
   cap.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
 }
 
@@ -681,8 +719,10 @@ function frame(now) {
   const moving = Math.abs(tgt.x - cam.x) > 0.05 || Math.abs(tgt.y - cam.y) > 0.05 || dragging ||
     Math.abs((leanOn ? lean.tx * 16 : 0) - lean.x) > 0.05 || Math.abs((leanOn ? lean.ty * 10 : 0) - lean.y) > 0.05;
   // traces surface a little while the field is moving, then sink back
-  const speed = Math.hypot(cam.x - prevCam.x, cam.y - prevCam.y) * s / dt;   // px per ms
+  const vxs = (cam.x - prevCam.x) * s / dt, vys = (cam.y - prevCam.y) * s / dt;   // px per ms on screen
+  const speed = Math.hypot(vxs, vys);
   prevCam.x = cam.x; prevCam.y = cam.y;
+  motionBlur(vxs, vys, dt);
   const want = clamp(speed / 1.1, 0, 1);
   traceBoost += (want - traceBoost) * (1 - Math.exp(-dt / (want > traceBoost ? 220 : 1400)));
   const animated = !reduce && ((mode === 'network' && traceBoost > 0.003) || now - revealT0 < 3200 || drift.amt > 0.001 || driftWanted(now));
@@ -691,6 +731,19 @@ function frame(now) {
   if (moving) wasSettled = false;
 }
 let wasSettled = false;
+/* Motion blur: moving fast smears the field along the direction of travel; it sharpens
+   as it slows. One blur for the whole field, only while it moves; not on phones. */
+const mblurG = document.getElementById('mblurG');
+const mb = { x: 0, y: 0, on: false };
+function motionBlur(vx, vy, dt) {
+  if (reduce || phone) return;
+  const k = 1 - Math.exp(-dt / 70);
+  mb.x += (Math.min(7, Math.abs(vx) * 2.2) - mb.x) * k;
+  mb.y += (Math.min(7, Math.abs(vy) * 2.2) - mb.y) * k;
+  const on = mb.x > 0.35 || mb.y > 0.35;
+  if (on) mblurG.setAttribute('stdDeviation', `${mb.x.toFixed(2)} ${mb.y.toFixed(2)}`);
+  if (on !== mb.on) { mb.on = on; world.style.filter = on ? 'url(#mblur)' : ''; }
+}
 function draw() {
   const cx = vw / 2 - lean.x, cy = vh / 2 + (phone ? 0 : 18) - lean.y;
   for (const it of items) {
@@ -901,7 +954,8 @@ function bucketRender(it, im, sx, sy, sw, sh, W2, H2, d) {
   const total = 1500 + R() * 1500;                                  // 1.5–3 s for the whole image
   const preview = R() < 0.35, readout = R() < 0.45, mono = !it.ro && R() < 0.2;   // the opening image always renders in colour
   const inkOffset = Math.floor(R() * BUCKET_INKS.length);
-  const inkOf = k => mono ? '#3a3a3e' : BUCKET_INKS[(inkOffset + k) % BUCKET_INKS.length];
+  const ACID = (getComputedStyle(document.documentElement).getPropertyValue('--acid').trim() || '#5cf03a');
+  const inkOf = k => mono ? '#3a3a3e' : ACID;   // the accent; a few pieces render in grey
   const tiles = [];
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     const nx = (c + 0.5) / cols - 0.5, ny = (r + 0.5) / rows - 0.5;
@@ -1087,7 +1141,10 @@ const navAbout = document.getElementById('navAbout'), aboutEl = document.getElem
 const peek = document.getElementById('peek'), peekImg = document.getElementById('peekImg');
 list.innerHTML = INDEX_ORDER.map(k => {
   const p = PROJECTS[k], n = PIECES.filter(x => x.p === k).length;
-  const inner = `<span class="t">${p.title}</span><span class="m">${p.medium} · ${n} pieces</span><span class="y">${p.year || '—'}</span>`;
+  const lb = LABELS[k] || {}, cv = PIECES.find(x => x.id === p.cover) || PIECES.find(x => x.p === k);
+  const id = { ih: 'IH', gs: 'GS', ac: 'AC', sim: 'SI', fif: 'FF' }[k] || k.toUpperCase();
+  const inner = `<span class="c">${id}</span><span class="t">${p.title}</span><span class="m">${p.medium} · ${String(n).padStart(2, '0')} fr.</span>` +
+    `<span class="d">${lb.duration ? durationCode(lb.duration) : '—'}</span><span class="y">${p.year || '—'}</span><span class="xy">x ${cv.x} y ${cv.y}</span>`;
   return `<li class="row"><a data-k="${k}" href="#${k}">${inner}</a></li>`;
 }).join('');
 list.querySelectorAll('a').forEach(a => {
