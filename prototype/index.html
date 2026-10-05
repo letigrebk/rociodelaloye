@@ -1,9 +1,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Rocío Delaloye World</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Nunito+Sans:opsz,wght@6..12,400&display=swap">
+<title>Rocío Delaloye</title>
 <style>
 /* Layout: one fixed full-screen field of work you pan through, under a fixed header;
    INDEX is a plain scrolling list over the same body of work.
@@ -14,14 +11,23 @@
   --mute: #797979;        /* the site's dark accent, 47% grey */
   --line: #e0e0e0;        /* the site's accent, 88% grey */
   --wash: #f5f5f5;        /* the site's light accent, placeholder behind loading work */
-  --font-main: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-meta: "Nunito Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  /* One typeface, one weight: ABC Diatype Regular. Licensed (Dinamo), so it is read from
+     the viewer's computer until the web font files are added; otherwise Helvetica Neue. */
+  --font-main: "ABC Diatype", "ABCDiatype-Regular", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-meta: var(--font-main);
+  /* Quiet type scale: nothing above 20px */
+  --fs-s: 12px;     /* captions, labels, switches */
+  --fs-m: 14px;     /* masthead, navigation, links */
+  --fs-b: 15px;     /* running text */
+  --fs-l: 20px;     /* project titles, index titles */
   --gutter: max(16px, 4vw);
   --radius: 3px;          /* soft corners on every image and video */
   --ease: cubic-bezier(.22, 1, .36, 1);
   color-scheme: light;
 }
 html, body { height: 100%; }
+@font-face { font-family: "ABC Diatype"; font-weight: 400; font-style: normal; font-display: swap;
+  src: local("ABC Diatype"), local("ABC Diatype Regular"), local("ABCDiatype-Regular"); }
 body {
   margin: 0; background: var(--bg); color: var(--ink);
   font-family: var(--font-main); font-weight: 400;
@@ -41,8 +47,8 @@ a { color: inherit; text-decoration: none; }
   background: linear-gradient(var(--bg) 35%, color-mix(in srgb, var(--bg) 0%, transparent));
 }
 .site-header a, .site-header button { pointer-events: auto; }
-.logo { font-size: clamp(20px, calc(.34 * 1.2vw + 16px), 23px); line-height: 1.38; letter-spacing: 0; }
-.nav { display: flex; gap: clamp(16px, 2.2vw, 30px); font-size: 14px; line-height: 1.27; }
+.logo { font-size: var(--fs-m); line-height: 1.4; }
+.nav { display: flex; gap: clamp(16px, 2.2vw, 30px); font-size: var(--fs-m); line-height: 1.4; }
 .nav button {
   font: inherit; color: var(--ink); background: none; border: 0; padding: 0; cursor: pointer;
 }
@@ -86,7 +92,7 @@ a { color: inherit; text-decoration: none; }
 /* One quiet line under the work */
 .cap {
   position: fixed; left: 0; top: 0; z-index: 20; pointer-events: none;
-  font-family: var(--font-meta); font-size: 12px; line-height: 1.5; color: var(--mute);
+  font-size: var(--fs-s); line-height: 1.5; color: var(--mute);
   white-space: nowrap; opacity: 0; transition: opacity .35s var(--ease);
 }
 .cap.on { opacity: 1; }
@@ -104,10 +110,10 @@ body.show-index .index { opacity: 1; visibility: visible; transition: opacity .4
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 14rem) 4rem; gap: 16px; align-items: baseline;
   padding: 18px 0 16px; border-bottom: 1px solid var(--line);
 }
-.row .t { font-size: clamp(20px, 2.2vw, 30px); line-height: 1.2; }
-.row .m, .row .y { font-family: var(--font-meta); font-size: 13px; color: var(--mute); }
+.row .t { font-size: var(--fs-l); line-height: 1.3; }
+.row .m, .row .y { font-size: var(--fs-s); color: var(--mute); }
 .row .y { text-align: right; font-variant-numeric: tabular-nums; }
-.row .soon { font-family: var(--font-meta); font-size: 12px; color: var(--mute); margin-left: 10px; }
+.row .soon { font-size: var(--fs-s); color: var(--mute); margin-left: 10px; }
 .index-list:hover .row a { color: var(--mute); }
 .index-list:hover .row a:hover, .index-list .row a:focus-visible { color: var(--ink); }
 .index-list:hover .row a:hover .m, .index-list:hover .row a:hover .y { color: var(--ink); }
@@ -117,7 +123,7 @@ body.show-index .index { opacity: 1; visibility: visible; transition: opacity .4
 }
 .peek.on { opacity: 1; }
 .peek img { display: block; width: 100%; height: auto; background: var(--wash); border-radius: var(--radius); }
-.index-note { font-family: var(--font-meta); font-size: 12px; color: var(--mute); margin: 28px 0 0; max-width: 58rem; }
+.index-note { font-size: var(--fs-s); color: var(--mute); margin: 28px 0 0; max-width: 58rem; }
 
 /* Opening a work: the field recedes, threads connect the work's fragments,
    they float together and land as the project page */
@@ -139,9 +145,9 @@ body.show-project .modes, body.show-project .hint { display: none; }
 .p-hero.portrait { width: min(100%, 520px); }
 .p-hero .m, .slot .m { display: block; width: 100%; height: auto; object-fit: cover; background: var(--wash); border-radius: var(--radius); }
 .p-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 34rem); gap: 20px 48px; margin: 28px 0 88px; align-items: start; }
-.p-title { font-size: clamp(28px, 3.4vw, 46px); line-height: 1.08; font-weight: 400; margin: 0; letter-spacing: -0.01em; }
-.p-label { font-family: var(--font-meta); font-size: 13px; line-height: 1.6; color: var(--mute); margin: 10px 0 0; }
-.p-text { font-size: 16px; line-height: 1.55; margin: 0; max-width: 62ch; }
+.p-title { font-size: var(--fs-l); line-height: 1.3; font-weight: 400; margin: 0; }
+.p-label { font-size: var(--fs-s); line-height: 1.6; color: var(--mute); margin: 6px 0 0; }
+.p-text { font-size: var(--fs-b); line-height: 1.55; margin: 0; max-width: 62ch; }
 .p-top.portrait { display: grid; grid-template-columns: minmax(0, 520px) minmax(0, 1fr); gap: 56px; align-items: end; margin-bottom: 104px; }
 .p-top.portrait .p-hero { width: 100%; }
 .p-top.portrait .p-head { grid-template-columns: minmax(0, 1fr); margin: 0; }
@@ -151,8 +157,8 @@ body.show-project .modes, body.show-project .hint { display: none; }
 .slot.portrait { grid-column: span 4; }
 .slot:nth-child(4n+2) { margin-top: 96px; }
 .slot:nth-child(4n+3).wide { grid-column: 3 / span 8; }
-.slot figcaption { font-family: var(--font-meta); font-size: 12px; color: var(--mute); margin-top: 8px; }
-.p-foot { display: flex; flex-wrap: wrap; gap: 12px 32px; margin-top: 96px; font-size: 14px; }
+.slot figcaption { font-size: var(--fs-s); color: var(--mute); margin-top: 8px; }
+.p-foot { display: flex; flex-wrap: wrap; gap: 12px 32px; margin-top: 96px; font-size: var(--fs-m); }
 .p-foot a, .p-foot button { font: inherit; color: var(--ink); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
 .rv { opacity: 0; transform: translateY(10px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
 .rv.in { opacity: 1; transform: none; }
@@ -174,7 +180,7 @@ body.show-project .modes, body.show-project .hint { display: none; }
 .modes {
   position: fixed; right: var(--gutter); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); z-index: 25;
   display: flex; gap: 14px; align-items: baseline;
-  font-family: var(--font-meta); font-size: 12px; color: var(--mute);
+  font-size: var(--fs-s); color: var(--mute);
 }
 .modes span { margin-right: 2px; }
 .modes .sep { margin-left: 14px; }
@@ -184,7 +190,7 @@ body.show-project .modes, body.show-project .hint { display: none; }
 body.show-index .modes { display: none; }
 .hint {
   position: fixed; left: var(--gutter); bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); z-index: 20;
-  font-family: var(--font-meta); font-size: 12px; color: var(--mute); pointer-events: none;
+  font-size: var(--fs-s); color: var(--mute); pointer-events: none;
   transition: opacity .8s var(--ease);
 }
 .hint.gone { opacity: 0; }
@@ -212,7 +218,7 @@ body.show-index .modes { display: none; }
 </style>
 
 <header class="site-header">
-  <a class="logo" href="#" id="logo" aria-label="Rocío Delaloye, home">↓↓↓</a>
+  <a class="logo" href="#" id="logo">Rocío Delaloye</a>
   <nav class="nav" aria-label="Main">
     <button type="button" id="navWorld" aria-current="true">World</button>
     <button type="button" id="navIndex" aria-current="false">Index</button>
@@ -237,7 +243,6 @@ body.show-index .modes { display: none; }
 
 <section class="index" id="index" aria-label="Index">
   <ol class="index-list" id="indexList"></ol>
-  <p class="index-note">Prototype. Project links open the current pages on rociodelaloye.com.</p>
 </section>
 <div class="peek" id="peek" aria-hidden="true"><img alt="" id="peekImg"></div>
 <div class="project-bg" id="projectBg" aria-hidden="true"></div>
@@ -593,7 +598,7 @@ function drawInk(now, cx, cy) {
     // crosses and coordinates where the near lines meet
     const N = GRID.near;
     g.strokeStyle = `rgba(0,0,0,${0.55 * t})`; g.lineWidth = 0.8;
-    g.fillStyle = `rgba(0,0,0,${0.45 * t})`; g.font = '9px "Nunito Sans", Helvetica, Arial, sans-serif';
+    g.fillStyle = `rgba(0,0,0,${0.45 * t})`; g.font = '9px "ABC Diatype", "Helvetica Neue", Helvetica, Arial, sans-serif';
     g.beginPath();
     N.xs.forEach((x, i) => N.ys.forEach((y, j) => {
       const sx = X(x, 1), sy = Y(y, 1);
