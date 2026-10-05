@@ -201,7 +201,21 @@ body.show-project .modes, body.show-project .hint { display: none; }
 .modes button { font: inherit; color: var(--mute); background: none; border: 0; padding: 4px 0; cursor: pointer; }
 .modes button:hover { color: var(--ink); }
 .modes button[aria-pressed="true"] { color: var(--ink); text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
-body.show-index .modes { display: none; }
+body.show-index .modes, body.show-about .modes, body.show-about .hint { display: none; }
+/* ABOUT: two paragraphs and three plain links */
+.about {
+  position: fixed; inset: 0; z-index: 30; overflow-y: auto; background: var(--bg);
+  padding: calc(env(safe-area-inset-top, 0px) + 112px) var(--gutter) 96px;
+  opacity: 0; visibility: hidden; transition: opacity .45s var(--ease), visibility 0s .45s;
+}
+body.show-about .about { opacity: 1; visibility: visible; transition: opacity .45s var(--ease); }
+.about-text { max-width: 36em; display: grid; gap: 1.1em; }
+.about-text p { margin: 0; font-size: var(--fs-l); line-height: 1.4; text-wrap: pretty; }
+.about-links { list-style: none; margin: 56px 0 0; padding: 0; display: grid; gap: 6px; font-size: var(--fs-m); line-height: 1.4; }
+.about-links a { color: var(--ink); }
+.about-links a:hover { opacity: .6; }
+.about-links a:not([href]) { color: var(--mute); cursor: default; }
+.about-links a:not([href]):hover { opacity: 1; }
 .hint {
   position: fixed; left: var(--gutter); bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); z-index: 20;
   font-size: var(--fs-s); color: var(--mute); pointer-events: none;
@@ -214,6 +228,8 @@ body.show-index .modes { display: none; }
   .index-list { max-width: none; }
 }
 @media (max-width: 760px) {
+  .about { padding-top: calc(env(safe-area-inset-top, 0px) + 88px); }
+  .about-text p { font-size: 17px; }
   .veil { -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
     --m: radial-gradient(ellipse 78% 64% at 50% 50%, transparent 55%, #000 100%); }
   .haze { background: radial-gradient(ellipse 80% 66% at 50% 50%, color-mix(in srgb, var(--bg) 0%, transparent) 58%, color-mix(in srgb, var(--bg) 78%, transparent) 100%); }
@@ -236,7 +252,7 @@ body.show-index .modes { display: none; }
   <nav class="nav" aria-label="Main">
     <button type="button" id="navWorld" aria-current="true">World</button>
     <button type="button" id="navIndex" aria-current="false">Index</button>
-    <a href="https://www.rociodelaloye.com/about" target="_blank" rel="noopener">About</a>
+    <button type="button" id="navAbout" aria-current="false">About</button>
   </nav>
 </header>
 
@@ -257,6 +273,17 @@ body.show-index .modes { display: none; }
 
 <section class="index" id="index" aria-label="Index">
   <ol class="index-list" id="indexList"></ol>
+</section>
+<section class="about" id="about" aria-label="About" aria-hidden="true">
+  <div class="about-text">
+    <p>Rocío Delaloye is an artist working across moving image, installation, digital environments and emerging technologies. Her work examines how perception is shaped through increasingly mediated realities, constructing situations where the familiar becomes unstable, artificial and strangely believable. Moving between physical and virtual space, she uses simulation, image-making and spatial experience to explore the systems through which we understand and inhabit the world.</p>
+    <p>Born in Argentina and based in New York, Delaloye holds an MFA in Digital + Media from Rhode Island School of Design and a BFA from Universidad Nacional de La Plata. Her work has been exhibited at the Bronx Museum of the Arts, RISD Museum, FILE Festival São Paulo, Boston Cyberarts and Ford Foundation Live Gallery, among others.</p>
+  </div>
+  <ul class="about-links">
+    <li><a href="https://www.rociodelaloye.com/s/Rocio-Delaloye_CV.pdf" target="_blank" rel="noopener">CV ↓</a></li>
+    <li><a title="Instagram address to come">Instagram ↗</a></li>
+    <li><a href="mailto:rcdelaloye@gmail.com">Email ↗</a></li>
+  </ul>
 </section>
 <div class="peek" id="peek" aria-hidden="true"><img alt="" id="peekImg"></div>
 <div class="project-bg" id="projectBg" aria-hidden="true"></div>
@@ -508,7 +535,7 @@ world.addEventListener('wheel', e => {
 }, { passive: false });
 
 addEventListener('keydown', e => {
-  if (document.body.classList.contains('show-index') || projectOpen) return;
+  if (document.body.classList.contains('show-index') || document.body.classList.contains('show-about') || projectOpen) return;
   const step = 260 / s, k = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
   if (!k) return;
   e.preventDefault(); tgt.x += k[0] * step; tgt.y += k[1] * step; wake();
@@ -726,6 +753,7 @@ function intro() {
 /* WORLD / INDEX */
 const indexEl = document.getElementById('index'), list = document.getElementById('indexList');
 const navWorld = document.getElementById('navWorld'), navIndex = document.getElementById('navIndex');
+const navAbout = document.getElementById('navAbout'), aboutEl = document.getElementById('about');
 const peek = document.getElementById('peek'), peekImg = document.getElementById('peekImg');
 list.innerHTML = INDEX_ORDER.map(k => {
   const p = PROJECTS[k], n = PIECES.filter(x => x.p === k).length;
@@ -743,15 +771,19 @@ list.querySelectorAll('a').forEach(a => {
 });
 function setView(v) {
   if (v === 'world-keep') v = 'world'; else if (projectOpen) closeProject(true);
-  const idx = v === 'index';
+  const idx = v === 'index', ab = v === 'about';
   document.body.classList.toggle('show-index', idx);
-  navWorld.setAttribute('aria-current', String(!idx)); navIndex.setAttribute('aria-current', String(idx));
-  indexEl.setAttribute('aria-hidden', String(!idx)); world.setAttribute('aria-hidden', String(idx));
+  document.body.classList.toggle('show-about', ab);
+  navWorld.setAttribute('aria-current', String(!idx && !ab));
+  navIndex.setAttribute('aria-current', String(idx)); navAbout.setAttribute('aria-current', String(ab));
+  indexEl.setAttribute('aria-hidden', String(!idx)); aboutEl.setAttribute('aria-hidden', String(!ab));
+  world.setAttribute('aria-hidden', String(idx || ab));
   peek.classList.remove('on'); clearHover();
-  if (!projectOpen) { try { history.replaceState(null, '', idx ? '#index' : location.pathname + location.search); } catch (_) {} }
+  if (!projectOpen) { try { history.replaceState(null, '', idx ? '#index' : ab ? '#about' : location.pathname + location.search); } catch (_) {} }
 }
 navWorld.addEventListener('click', () => setView('world'));
 navIndex.addEventListener('click', () => setView('index'));
+navAbout.addEventListener('click', () => setView('about'));
 document.getElementById('logo').addEventListener('click', e => {
   e.preventDefault(); setView('world');
   const st = phone ? START_PHONE : START; tgt.x = st.x; tgt.y = st.y; wake();
@@ -988,6 +1020,7 @@ setOpenMode(openMode);
 measure();
 if (phone) { cam.x = tgt.x = START_PHONE.x; cam.y = tgt.y = START_PHONE.y; }
 if (location.hash === '#index') setView('index');
+if (location.hash === '#about') setView('about');
 if (MAP) { cam.x = tgt.x = W / 2; cam.y = tgt.y = H / 2; document.querySelector('.veil').hidden = true; document.querySelector('.haze').hidden = true; }
 setMode(mode);
 draw(); intro(); videos();
