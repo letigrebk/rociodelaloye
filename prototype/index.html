@@ -391,9 +391,8 @@ const TEXTS = {
    1440-wide screen). x/y is the centre of each piece, w its width, r its height/width.
    d is depth: 0 far (drifts slower), 1 middle, 2 near (drifts a little faster).
    v marks a video loop; `note` overrides the medium in the caption.
-   t marks the few pieces that draw themselves the first time they are seen ('down' or
-   'right', the direction of the reveal); tp is their pace (1 = about 1.4 s). Every other
-   piece bucket-renders in its own way; ro fixes its bucket order where it matters. */
+   Every piece renders in, Cinema 4D style, in its own way the first time it is seen;
+   ro fixes a piece's bucket order where it matters. */
 const W = 4600, H = 3200;
 const START = { x: 2300, y: 1600 }, START_PHONE = { x: 2150, y: 1580 };
 /* Ways in: the first visit always opens on the first; later visits open on one of the
@@ -409,21 +408,21 @@ const PIECES = [
   // Opening frame: one dominant image, a tall loop beside it, a small fragment, work bleeding in at the edges
   { id: 'ih-pool',       p: 'ih',  x: 2030, y: 1600, w: 760, r: L,    d: 1, ro: 'spiral' },
   { id: 'ih-v-waterpark',p: 'ih',  x: 2690, y: 1470, w: 250, r: P45,  d: 2, v: 1 },
-  { id: 'gs-hand',       p: 'gs',  x: 2850, y: 1880, w: 150, r: 432/786, d: 0, t: 'down', tp: 0.9 },
-  { id: 'sim-city',      p: 'sim', x: 1420, y: 1170, w: 600, r: L,    d: 1, t: 'right', tp: 1.1 },
+  { id: 'gs-hand',       p: 'gs',  x: 2850, y: 1880, w: 150, r: 432/786, d: 0 },
+  { id: 'sim-city',      p: 'sim', x: 1420, y: 1170, w: 600, r: L,    d: 1 },
   { id: 'ih-lounger',    p: 'ih',  x: 2480, y: 2130, w: 400, r: L,    d: 0 },
 
   // Indoor Horizon, east of the opening
   { id: 'ih-v-beach',    p: 'ih',  x: 3330, y: 1620, w: 300, r: P45,  d: 1, v: 1 },
   { id: 'ih-waterpark',  p: 'ih',  x: 3520, y: 1050, w: 540, r: L,    d: 1 },
-  { id: 'ih-comfort',    p: 'ih',  x: 3820, y: 2380, w: 900, r: L,    d: 1, t: 'down', tp: 1.15 },
+  { id: 'ih-comfort',    p: 'ih',  x: 3820, y: 2380, w: 900, r: L,    d: 1 },
   { id: 'ih-v-card',     p: 'ih',  x: 3120, y: 2470, w: 190, r: P45,  d: 2, v: 1 },
   { id: 'ih-v-key',      p: 'ih',  x: 4180, y: 1560, w: 400, r: L,    d: 0, v: 1, a: 1 },
   { id: 'ih-v-pool',     p: 'ih',  x: 2140, y: 2430, w: 260, r: P45,  d: 1, v: 1 },
-  { id: 'ih-domes',      p: 'ih',  x: 2760, y: 760,  w: 440, r: L,    d: 0, t: 'down', tp: 1.25 },
+  { id: 'ih-domes',      p: 'ih',  x: 2760, y: 760,  w: 440, r: L,    d: 0 },
 
   // Anima_C0de, north-east
-  { id: 'ac-base',       p: 'ac',  x: 3700, y: 520,  w: 980, r: L,    d: 1, t: 'right', tp: 1.2 },
+  { id: 'ac-base',       p: 'ac',  x: 3700, y: 520,  w: 980, r: L,    d: 1 },
   { id: 'ac-title',      p: 'ac',  x: 4380, y: 1010,  w: 340, r: L,    d: 2 },
   { id: 'ac-tiger',      p: 'ac',  x: 4400, y: 190,  w: 300, r: L,    d: 0 },
   { id: 'ac-deck',       p: 'ac',  x: 2330, y: 330,  w: 460, r: L,    d: 1 },
@@ -435,7 +434,7 @@ const PIECES = [
   { id: 'sim-pink',      p: 'sim', x: 760,  y: 760,  w: 580, r: L,    d: 1 },
   { id: 'sim-bubbles',   p: 'sim', x: 1420, y: 470,  w: 360, r: L,    d: 0 },
   { id: 'sim-rocks',     p: 'sim', x: 330,  y: 1250, w: 300, r: L,    d: 0 },
-  { id: 'sim-install',   p: 'sim', x: 1880, y: 760,  w: 240, r: 1.5,  d: 1, note: 'Installation view', t: 'down', tp: 1.0 },
+  { id: 'sim-install',   p: 'sim', x: 1880, y: 760,  w: 240, r: 1.5,  d: 1, note: 'Installation view' },
 
   // Ghost//Sintax, south-west
   { id: 'gs-v-hand',     p: 'gs',  x: 1000, y: 2640, w: 680, r: L,    d: 1, v: 1, a: 1 },
@@ -446,7 +445,7 @@ const PIECES = [
   { id: 'gs-install',    p: 'gs',  x: 1640, y: 2190, w: 200, r: 1.5,  d: 0, note: 'Installation view' },
 
   // Faith in Fakes, south
-  { id: 'fif-slides',    p: 'fif', x: 2780, y: 2980, w: 640, r: 0.625, d: 1, t: 'right', tp: 1.3 },
+  { id: 'fif-slides',    p: 'fif', x: 2780, y: 2980, w: 640, r: 0.625, d: 1 },
   { id: 'fif-aluminum',  p: 'fif', x: 3650, y: 3000, w: 330, r: 0.625, d: 0, note: 'Print on aluminum' }
 ];
 const DEPTH = [0.9, 1, 1.08];
@@ -820,7 +819,7 @@ function load(it) {
    Contours are found once per piece: a softened copy, its edge strength, and only
    the strongest ~9% of edges kept, so dense foliage doesn't turn into noise. */
 let loadMode = 'resolve';
-try { const r = localStorage.getItem('rd-load'); if (r === 'resolve' || r === 'fade') loadMode = r; } catch (_) {}
+try { const r = localStorage.getItem('rd-load2'); if (r === 'resolve' || r === 'fade') loadMode = r; } catch (_) {}
 const TRACE = { draw: 520, hold: 160, scan: 760, fade: 260 };
 function finishResolve(it) {
   it.resolved = true; it.el.classList.remove('unresolved');
@@ -876,20 +875,33 @@ function hashStr(str) { let h = 2166136261; for (let i = 0; i < str.length; i++)
 function seededR(seed) { let x = seed || 1; return () => { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; }; }
 const BUCKET_INKS = ['#ff4fa3', '#1fc6d4', '#f5a300', '#7a5cff', '#1fae6a', '#ff5a1f'];
 const BUCKET_ORDERS = ['spiral', 'rows', 'cols', 'scatter', 'centre', 'diagonal'];
+let GRAIN = null;
+function grain() {
+  // a sheet of render noise: mostly light grey and white specks, some darker samples
+  if (GRAIN) return GRAIN;
+  const n = 256, c = document.createElement('canvas'); c.width = n; c.height = n;
+  const x = c.getContext('2d'), d = x.createImageData(n, n), R = seededR(77);
+  for (let i = 0; i < n * n; i++) {
+    const v = R() < 0.18 ? 40 + R() * 90 : 170 + R() * 85, a = R() < 0.55 ? 255 : 0;
+    d.data[i * 4] = v; d.data[i * 4 + 1] = v; d.data[i * 4 + 2] = v + 4; d.data[i * 4 + 3] = a;
+  }
+  x.putImageData(d, 0, 0);
+  return (GRAIN = c);
+}
+const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`; };
 function bucketRender(it, im, sx, sy, sw, sh, W2, H2, d) {
   const R = seededR(hashStr(it.id + 'bucket'));
   const pick = BUCKET_ORDERS[Math.floor(R() * BUCKET_ORDERS.length)], order = it.ro || pick;
-  const cssTile = [24, 30, 36, 44, 52, 64][Math.floor(R() * 6)];
-  // big pieces get bigger buckets: never more than 11 across or down, so every piece finishes in time
-  const tile = Math.max(cssTile * d, W2 / 11, H2 / 11);
+  const cssTile = [28, 34, 40, 48, 56, 64][Math.floor(R() * 6)];
+  // big pieces get bigger buckets: never more than 10 across or down, so every piece finishes in time
+  const tile = Math.max(cssTile * d, W2 / 10, H2 / 10);
   const cols = Math.max(3, Math.round(W2 / tile)), rows = Math.max(2, Math.round(H2 / tile));
   const tw = W2 / cols, th = H2 / rows;
   const threads = 3 + Math.floor(R() * 6);                          // 3–8 buckets at once
-  const total = 1100 + R() * 1500;                                  // 1.1–2.6 s for the whole image
-  const preview = R() < 0.4, readout = R() < 0.3, mono = R() < 0.25;
+  const total = 1500 + R() * 1500;                                  // 1.5–3 s for the whole image
+  const preview = R() < 0.35, readout = R() < 0.45, mono = !it.ro && R() < 0.2;   // the opening image always renders in colour
   const inkOffset = Math.floor(R() * BUCKET_INKS.length);
-  const inkOf = k => mono ? 'rgba(30,30,32,0.7)' : BUCKET_INKS[(inkOffset + k) % BUCKET_INKS.length];
-  // the order buckets are taken in
+  const inkOf = k => mono ? '#3a3a3e' : BUCKET_INKS[(inkOffset + k) % BUCKET_INKS.length];
   const tiles = [];
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     const nx = (c + 0.5) / cols - 0.5, ny = (r + 0.5) / rows - 0.5;
@@ -900,29 +912,32 @@ function bucketRender(it, im, sx, sy, sw, sh, W2, H2, d) {
     else if (order === 'centre') key = Math.hypot(nx, ny * rows / cols) + R() * 0.02;
     else if (order === 'diagonal') key = c / cols + r / rows + R() * 0.05;
     else { const ring = Math.max(Math.abs(nx) * cols, Math.abs(ny) * rows); key = Math.round(ring) * 10 + (Math.atan2(ny, nx) + Math.PI) / (2 * Math.PI); }
-    tiles.push({ c, r, key, dur: 0 });
+    tiles.push({ c, r, key });
   }
   tiles.sort((a, b) => a.key - b.key);
-  const per = Math.max(45, Math.min(300, total * threads / tiles.length));
-  tiles.forEach(t => { t.dur = per * (0.55 + R() * 0.9); });
-  // schedule onto threads
+  const per = Math.max(120, Math.min(520, total * threads / tiles.length));
   const free = Array.from({ length: threads }, () => 0);
   tiles.forEach(t => {
     let k = 0; for (let i = 1; i < threads; i++) if (free[i] < free[k]) k = i;
-    t.start = free[k] + R() * 12; t.end = t.start + t.dur; t.thread = k; free[k] = t.end;
+    t.dur = per * (0.6 + R() * 0.8); t.start = free[k] + R() * 20; t.end = t.start + t.dur; t.thread = k; free[k] = t.end;
+    t.gx = Math.floor(R() * 200); t.gy = Math.floor(R() * 200);
   });
-  const end = Math.max(...free) + 40;
-  // canvas, and an unrendered base: pale, with a soft low-resolution preview on some pieces
+  const end = Math.max(...free) + 60;
+  // unrendered state: a pale grey sheet with the bucket grid drawn on it
   const c = document.createElement('canvas'); c.className = 'resolve'; c.width = W2; c.height = H2;
   it.el.appendChild(c);
   const g2 = c.getContext('2d');
   const base = document.createElement('canvas'); base.width = W2; base.height = H2;
   const bg = base.getContext('2d');
-  bg.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--wash').trim() || '#f5f5f5';
-  bg.fillRect(0, 0, W2, H2);
-  if (preview) { bg.globalAlpha = 0.16; bg.filter = `blur(${Math.round(10 * d)}px)`; bg.drawImage(im, sx, sy, sw, sh, 0, 0, W2, H2); bg.filter = 'none'; bg.globalAlpha = 1; }
+  bg.fillStyle = '#ececec'; bg.fillRect(0, 0, W2, H2);
+  if (preview) { bg.globalAlpha = 0.18; bg.filter = `blur(${Math.round(9 * d)}px)`; bg.drawImage(im, sx, sy, sw, sh, 0, 0, W2, H2); bg.filter = 'none'; bg.globalAlpha = 1; }
+  bg.strokeStyle = 'rgba(0,0,0,0.07)'; bg.lineWidth = 1;
+  bg.beginPath();
+  for (let i = 1; i < cols; i++) { const x = Math.round(i * tw) + 0.5; bg.moveTo(x, 0); bg.lineTo(x, H2); }
+  for (let j = 1; j < rows; j++) { const y = Math.round(j * th) + 0.5; bg.moveTo(0, y); bg.lineTo(W2, y); }
+  bg.stroke();
   g2.drawImage(base, 0, 0);
-  const lw = Math.max(1, Math.round(d));
+  const lw = Math.max(1, Math.round(1.25 * d)), G = grain();
   const rect = t => [Math.round(t.c * tw), Math.round(t.r * th), Math.round((t.c + 1) * tw) - Math.round(t.c * tw), Math.round((t.r + 1) * th) - Math.round(t.r * th)];
   const fx = sw / W2, fy = sh / H2;
   const paintImage = (x, y, w, h) => { if (w > 0 && h > 0) g2.drawImage(im, sx + x * fx, sy + y * fy, w * fx, h * fy, x, y, w, h); };
@@ -930,37 +945,48 @@ function bucketRender(it, im, sx, sy, sw, sh, W2, H2, d) {
   let lastReadout = null;
   const tick = now => {
     const t = now - t0;
-    // clear the readout area from the last frame (it sits over rendered or unrendered pixels)
-    if (lastReadout) { const [x, y, w, h] = lastReadout; g2.drawImage(base, x, y, w, h, x, y, w, h);
-      tiles.forEach(tl => { if (done.has(tl)) { const [a, b, cw, ch] = rect(tl); const ix = Math.max(a, x), iy = Math.max(b, y), ax = Math.min(a + cw, x + w), ay = Math.min(b + ch, y + h); if (ax > ix && ay > iy) paintImage(ix, iy, ax - ix, ay - iy); } }); }
+    if (lastReadout) {   // restore what the readout covered last frame
+      const [x, y, w, h] = lastReadout; g2.drawImage(base, x, y, w, h, x, y, w, h);
+      tiles.forEach(tl => { if (done.has(tl)) { const [a, b, cw, ch] = rect(tl); const ix = Math.max(a, x), iy = Math.max(b, y), ax = Math.min(a + cw, x + w), ay = Math.min(b + ch, y + h); if (ax > ix && ay > iy) paintImage(ix, iy, ax - ix, ay - iy); } });
+    }
     let doneCount = 0;
     for (const tl of tiles) {
       if (done.has(tl)) { doneCount++; continue; }
       if (t < tl.start) continue;
       const [x, y, w, h] = rect(tl);
+      if (t >= tl.end) { g2.drawImage(base, x, y, w, h, x, y, w, h); paintImage(x, y, w, h); done.add(tl); doneCount++; continue; }
+      const p = (t - tl.start) / tl.dur, ink = inkOf(tl.thread);
       g2.drawImage(base, x, y, w, h, x, y, w, h);
-      if (t >= tl.end) { paintImage(x, y, w, h); done.add(tl); doneCount++; continue; }
-      // rendering: scanlines fill the bucket top to bottom
-      const p = (t - tl.start) / tl.dur;
-      paintImage(x, y, w, Math.round(h * p));
-      const ink = inkOf(tl.thread), L = Math.max(4 * d, Math.min(w, h) * 0.28);
+      // 1. a flat colour square appears (the bucket being taken by a thread)
+      g2.fillStyle = hexA(ink.length === 7 ? ink : '#3a3a3e', 0.28 * (1 - Math.min(1, p / 0.35)) + 0.06);
+      g2.fillRect(x, y, w, h);
+      // 2. samples arrive: the image, under grain that clears as the bucket converges
+      if (p > 0.12) {
+        const q = (p - 0.12) / 0.88;
+        g2.globalAlpha = 0.25 + 0.75 * q; paintImage(x, y, w, h); g2.globalAlpha = 1;
+        g2.globalAlpha = 0.85 * Math.pow(1 - q, 1.4);
+        g2.drawImage(G, (tl.gx + Math.floor(t / 40) * 37) % 200, (tl.gy + Math.floor(t / 40) * 53) % 200, Math.min(56, w), Math.min(56, h), x, y, w, h);
+        g2.globalAlpha = 1;
+      }
+      // 3. the bucket's frame: a fine outline and stronger corner brackets in the thread's colour
+      const o = lw / 2, L = Math.max(5 * d, Math.min(w, h) * 0.3);
+      g2.strokeStyle = hexA(ink.length === 7 ? ink : '#3a3a3e', 0.45); g2.lineWidth = Math.max(1, Math.round(d * 0.75));
+      g2.strokeRect(x + o, y + o, w - lw, h - lw);
       g2.strokeStyle = ink; g2.lineWidth = lw;
       g2.beginPath();
-      const o = lw / 2;
       g2.moveTo(x + o, y + L); g2.lineTo(x + o, y + o); g2.lineTo(x + L, y + o);
       g2.moveTo(x + w - L, y + o); g2.lineTo(x + w - o, y + o); g2.lineTo(x + w - o, y + L);
       g2.moveTo(x + o, y + h - L); g2.lineTo(x + o, y + h - o); g2.lineTo(x + L, y + h - o);
       g2.moveTo(x + w - L, y + h - o); g2.lineTo(x + w - o, y + h - o); g2.lineTo(x + w - o, y + h - L);
       g2.stroke();
-      g2.fillStyle = ink; g2.fillRect(x + o + lw, y + h - 3 * lw, Math.max(1, (w - 3 * lw) * p), lw);   // progress rule
     }
     if (readout && t < end) {
       const pct = Math.round(doneCount / tiles.length * 100), fs = Math.round(9 * d);
-      const label = `Rendering ${String(pct).padStart(2, ' ')}%  ${(t / 1000).toFixed(1)}s`;
+      const label = `Rendering ${pct}%   ${(t / 1000).toFixed(1)} s   ${threads} threads`;
       g2.font = `${fs}px "ABC Diatype", "Helvetica Neue", Helvetica, Arial, sans-serif`;
       const tw2 = Math.ceil(g2.measureText(label).width) + 8 * d, x = Math.round(6 * d), y = H2 - Math.round(6 * d) - fs - 4 * d;
-      g2.fillStyle = 'rgba(255,255,255,0.82)'; g2.fillRect(x, y, tw2, fs + 6 * d);
-      g2.fillStyle = 'rgba(20,20,22,0.8)'; g2.fillText(label, x + 4 * d, y + fs + 1 * d);
+      g2.fillStyle = 'rgba(255,255,255,0.86)'; g2.fillRect(x, y, tw2, fs + 6 * d);
+      g2.fillStyle = 'rgba(20,20,22,0.85)'; g2.fillText(label, x + 4 * d, y + fs + 1 * d);
       lastReadout = [x, y, tw2, fs + 6 * d];
     }
     if (t < end) requestAnimationFrame(tick);
@@ -1541,7 +1567,7 @@ setOpenMode(openMode);
 function setLoadMode(r) {
   loadMode = r;
   modesEl.querySelectorAll('[data-r]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.r === r)));
-  try { localStorage.setItem('rd-load', r); } catch (_) {}
+  try { localStorage.setItem('rd-load2', r); } catch (_) {}
   if (r === 'fade') items.forEach(it => { if (!it.resolved && !it.resolving) finishResolve(it); });
 }
 setLoadMode(loadMode);
