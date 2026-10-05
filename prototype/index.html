@@ -12,10 +12,14 @@
   --line: #e0e0e0;        /* the site's accent, 88% grey */
   --wash: #f5f5f5;        /* the site's light accent, placeholder behind loading work */
   --nav-air: 245, 246, 248;   /* cool off-white behind the navigation (RGB, used with alpha) */
+  --glass-hi: 250, 249, 246;  /* frosted pills: a warm grey glass, lighter at the top (RGB, used with alpha) */
+  --glass-lo: 236, 234, 229;
+  --glass-edge: 255, 255, 255;
   --screen: #000000;          /* screening room: black in any light */
   --screen-ink: #ffffff;
-  /* One typeface, one weight: ABC Diatype Regular. Licensed (Dinamo), so it is read from
-     the viewer's computer until the web font files are added; otherwise Helvetica Neue. */
+  /* One typeface: ABC Diatype, Regular throughout, Medium only in the navigation pills.
+     Licensed (Dinamo), so it is read from the viewer's computer until the web font
+     files are added; otherwise Helvetica Neue. */
   --font-main: "ABC Diatype", "ABCDiatype-Regular", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-meta: var(--font-main);
   /* Quiet type scale: nothing above 20px */
@@ -31,6 +35,8 @@
 html, body { height: 100%; }
 @font-face { font-family: "ABC Diatype"; font-weight: 400; font-style: normal; font-display: swap;
   src: local("ABC Diatype"), local("ABC Diatype Regular"), local("ABCDiatype-Regular"); }
+@font-face { font-family: "ABC Diatype"; font-weight: 500; font-style: normal; font-display: swap;
+  src: local("ABC Diatype Medium"), local("ABCDiatype-Medium"); }
 body {
   margin: 0; background: var(--bg); color: var(--ink);
   font-family: var(--font-main); font-weight: 400;
@@ -39,38 +45,30 @@ body {
 a { color: inherit; text-decoration: none; }
 
 /* Header: the existing site header, fixed above the field */
+/* Each item sits in its own frosted-glass pill floating over the field; no band behind. */
 .site-header {
   position: fixed; inset: 0 0 auto 0; z-index: 40;
-  display: flex; align-items: baseline; justify-content: space-between; gap: 24px;
-  padding: calc(env(safe-area-inset-top, 0px) + max(14px, 1.9vw)) var(--gutter) 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: calc(env(safe-area-inset-top, 0px) + max(12px, 1.25vw)) var(--gutter) 0;
   pointer-events: none;
 }
-.site-header::before {
-  /* atmosphere only: a cool off-white that eases to nothing within ~140px; no edge, no blur */
-  content: ""; position: absolute; left: 0; right: 0; top: 0; z-index: -1; pointer-events: none;
-  height: calc(env(safe-area-inset-top, 0px) + 140px);
-  background: linear-gradient(to bottom,
-    rgba(var(--nav-air), 0.900) 0%,
-    rgba(var(--nav-air), 0.714) 10%,
-    rgba(var(--nav-air), 0.551) 20%,
-    rgba(var(--nav-air), 0.411) 30%,
-    rgba(var(--nav-air), 0.293) 40%,
-    rgba(var(--nav-air), 0.196) 50%,
-    rgba(var(--nav-air), 0.120) 60%,
-    rgba(var(--nav-air), 0.064) 70%,
-    rgba(var(--nav-air), 0.026) 80%,
-    rgba(var(--nav-air), 0.006) 90%,
-    rgba(var(--nav-air), 0.000) 100%);
-}
 .site-header a, .site-header button { pointer-events: auto; }
-.logo { font-size: var(--fs-m); line-height: 1.4; }
-.nav { display: flex; gap: clamp(16px, 2.2vw, 30px); font-size: var(--fs-m); line-height: 1.4; }
-.nav button {
-  font: inherit; color: var(--ink); background: none; border: 0; padding: 0; cursor: pointer;
+.nav { display: flex; gap: 6px; }
+.pill {
+  display: inline-flex; align-items: center;
+  font-family: var(--font-main); font-weight: 500; font-size: var(--fs-m); line-height: 1; letter-spacing: -0.01em;
+  color: var(--ink); border: 0; cursor: pointer; white-space: nowrap;
+  padding: 10px 13px 10px; border-radius: 9px;
+  background: linear-gradient(180deg, rgba(var(--glass-hi), 0.74), rgba(var(--glass-lo), 0.62));
+  -webkit-backdrop-filter: blur(14px) saturate(1.5); backdrop-filter: blur(14px) saturate(1.5);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--glass-edge), 0.6);
+  transition: background .35s var(--ease);
 }
-.nav [aria-current="true"] { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
-.nav a:hover, .nav button:hover { opacity: .6; }
-:focus-visible { outline: 1px solid var(--ink); outline-offset: 3px; }
+.pill:hover, .pill[aria-current="true"] {
+  background: linear-gradient(180deg, rgba(var(--glass-hi), 0.9), rgba(var(--glass-lo), 0.82));
+}
+:focus-visible { outline: 1px solid var(--ink); outline-offset: 2px; }
+.pill:focus-visible { border-radius: 9px; }
 
 /* The field */
 .world {
@@ -263,6 +261,9 @@ body.show-index .sound, body.show-about .sound, body.show-project .sound { displ
   .index-list { max-width: none; }
 }
 @media (max-width: 760px) {
+  .site-header { gap: 8px; }
+  .nav { gap: 4px; }
+  .pill { padding: 9px 10px; }
   .about { padding-top: calc(env(safe-area-inset-top, 0px) + 88px); }
   .about-text p { font-size: 17px; }
   .veil { -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
@@ -284,11 +285,11 @@ body.show-index .sound, body.show-about .sound, body.show-project .sound { displ
 </style>
 
 <header class="site-header">
-  <a class="logo" href="#" id="logo">Rocío Delaloye</a>
+  <a class="logo pill" href="#" id="logo">Rocío Delaloye</a>
   <nav class="nav" aria-label="Main">
-    <button type="button" id="navWorld" aria-current="true">World</button>
-    <button type="button" id="navIndex" aria-current="false">Index</button>
-    <button type="button" id="navAbout" aria-current="false">About</button>
+    <button type="button" class="pill" id="navWorld" aria-current="true">World</button>
+    <button type="button" class="pill" id="navIndex" aria-current="false">Index</button>
+    <button type="button" class="pill" id="navAbout" aria-current="false">About</button>
   </nav>
 </header>
 
@@ -1128,7 +1129,7 @@ const SOUND = { on: false, ctx: null, gains: new Map(), amb: { buf: null, src: n
    sits lower away from the field, and is silent during a screening. */
 function ambientURL() {
   const a = document.createElement('audio');
-  return a.canPlayType('audio/mp4; codecs="mp4a.40.2"') ? 'media/ambient.m4a' : 'media/ambient.ogg';
+  return a.canPlayType('audio/mp4; codecs="mp4a.40.2"') ? 'media/ambient.mp4' : 'media/ambient.ogg';
 }
 async function startAmbient() {
   const A = SOUND.amb, ctx = SOUND.ctx;
