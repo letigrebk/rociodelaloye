@@ -94,10 +94,11 @@ a { color: inherit; text-decoration: none; }
 .world.has-hover .piece.in:not(.hover) { opacity: .78; }
 .piece.opening { filter: brightness(1.06); }
 
-/* Resolve: a piece arrives like a render converging, as a coarse mosaic of itself that
-   steps up in resolution until it is sharp; light throughout, never darkened. */
+/* Trace: a piece first appears as a fine line drawing of itself on white; then a
+   single hairline scans down and the real image is revealed behind it. */
+.piece.unresolved { background: transparent; }
 .piece.unresolved img, .piece.unresolved video { opacity: 0; }
-.piece .resolve { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; image-rendering: pixelated; transition: opacity .28s linear; }
+.piece .resolve { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; transition: opacity .25s linear; }
 .piece .resolve.done { opacity: 0; }
 
 /* Soft focus: sharp in the middle, dissolving toward the edges */
@@ -327,7 +328,7 @@ body.show-index .sound, body.show-about .sound, body.show-project .sound { displ
   <button type="button" data-s="2" aria-pressed="false">3</button>
   <button type="button" data-s="3" aria-pressed="false">4</button>
   <span class="sep">Load</span>
-  <button type="button" data-r="resolve" aria-pressed="false">Resolve</button>
+  <button type="button" data-r="resolve" aria-pressed="false">Trace</button>
   <button type="button" data-r="fade" aria-pressed="false">Fade</button>
 </div>
 <div class="screening" id="screening" role="dialog" aria-label="Screening" aria-hidden="true">
@@ -807,46 +808,89 @@ function load(it) {
   }
 }
 
-/* ---------- Resolve ----------
-   Runs the first time a piece is actually on screen once its image has arrived:
-   six steps from a ~6-cell-wide mosaic to the full picture, each a little less lifted
-   toward white, then the sharp image takes over. About 0.85 s in all. */
+/* ---------- Trace ----------
+   The first time a piece is on screen (once its image has arrived):
+   1. its contours, found from the image itself, trace in from top to bottom as
+      fine dark hairlines on white (about 0.5 s);
+   2. a single hairline then scans down and the real image is revealed above it,
+      the drawing giving way below (about 0.75 s); the sharp media then takes over.
+   Contours are found once per piece: a softened copy, its edge strength, and only
+   the strongest ~9% of edges kept, so dense foliage doesn't turn into noise. */
 let loadMode = 'resolve';
 try { const r = localStorage.getItem('rd-load'); if (r === 'resolve' || r === 'fade') loadMode = r; } catch (_) {}
-const RESOLVE = [ [0, 6, 0.5], [110, 11, 0.36], [220, 20, 0.24], [330, 36, 0.14], [440, 64, 0.07], [550, 120, 0.02] ];
-const RESOLVE_END = 660;
+const TRACE = { draw: 520, hold: 160, scan: 760, fade: 260 };
 function finishResolve(it) {
   it.resolved = true; it.el.classList.remove('unresolved');
   const c = it.el.querySelector('.resolve');
-  if (c) { c.classList.add('done'); setTimeout(() => c.remove(), 320); }
+  if (c) { c.classList.add('done'); setTimeout(() => c.remove(), 300); }
+}
+function contours(im, sx, sy, sw, sh, W2, H2) {
+  // Canny-like: soften, measure edge strength and direction, keep only the crest of
+  // each edge (one pixel wide), then the strongest ~11% of what remains, drawn as
+  // fine grey hairlines. Worked at up to 1100 px wide.
+  const k = Math.min(1, 1100 / W2), w = Math.max(8, Math.round(W2 * k)), h = Math.max(8, Math.round(H2 * k));
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const cx = cv.getContext('2d', { willReadFrequently: true });
+  cx.filter = `blur(${Math.max(0.8, w / 700).toFixed(2)}px)`;
+  cx.drawImage(im, sx, sy, sw, sh, 0, 0, w, h);
+  const src = cx.getImageData(0, 0, w, h).data, n = w * h, L = new Float32Array(n);
+  for (let i = 0, j = 0; i < n; i++, j += 4) L[i] = 0.299 * src[j] + 0.587 * src[j + 1] + 0.114 * src[j + 2];
+  const M = new Float32Array(n), D = new Uint8Array(n);
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const i = y * w + x;
+    const gx = -L[i - w - 1] - 2 * L[i - 1] - L[i + w - 1] + L[i - w + 1] + 2 * L[i + 1] + L[i + w + 1];
+    const gy = -L[i - w - 1] - 2 * L[i - w] - L[i - w + 1] + L[i + w - 1] + 2 * L[i + w] + L[i + w + 1];
+    M[i] = Math.hypot(gx, gy);
+    const a = (Math.atan2(gy, gx) * 180 / Math.PI + 180) % 180;      // direction, quantised to 4
+    D[i] = a < 22.5 || a >= 157.5 ? 0 : a < 67.5 ? 1 : a < 112.5 ? 2 : 3;
+  }
+  // thin to the crest
+  const T = new Float32Array(n), off = [1, w + 1, w, w - 1];
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const i = y * w + x, m = M[i], o = off[D[i]];
+    if (m >= M[i + o] && m >= M[i - o]) T[i] = m;
+  }
+  const sample = []; for (let i = 0; i < n; i += 5) if (T[i] > 0) sample.push(T[i]);
+  sample.sort((a, b) => a - b);
+  const q = p => sample[Math.min(sample.length - 1, Math.floor(sample.length * p))] || 1;
+  const lo = q(0.62), hi = Math.max(lo + 1, q(0.97));
+  const out = cx.createImageData(w, h), o2 = out.data;
+  for (let i = 0, j = 0; i < n; i++, j += 4) {
+    const a = T[i] > 0 ? Math.min(1, Math.max(0, (T[i] - lo) / (hi - lo))) : 0;
+    o2[j] = 40; o2[j + 1] = 40; o2[j + 2] = 44; o2[j + 3] = Math.round(Math.pow(a, 0.7) * 150);
+  }
+  cx.filter = 'none'; cx.clearRect(0, 0, w, h); cx.putImageData(out, 0, 0);
+  return cv;
 }
 function startResolve(it) {
   if (it.resolved || it.resolving || !it.still) return;
   it.resolving = true;
   const im = it.still, d = Math.min(2, devicePixelRatio || 1);
   const W2 = Math.max(1, Math.round(it.w * s * d)), H2 = Math.max(1, Math.round(it.h * s * d));
-  const c = document.createElement('canvas'); c.className = 'resolve'; c.width = W2; c.height = H2;
-  it.el.appendChild(c);
-  const g2 = c.getContext('2d'), tiny = document.createElement('canvas'), tg = tiny.getContext('2d');
   // crop like object-fit: cover
   const ar = H2 / W2, iar = im.naturalHeight / im.naturalWidth;
   let sx = 0, sy = 0, sw = im.naturalWidth, sh = im.naturalHeight;
   if (iar > ar) { sh = sw * ar; sy = (im.naturalHeight - sh) / 2; } else { sw = sh / ar; sx = (im.naturalWidth - sw) / 2; }
-  let step = -1;
-  const t0 = performance.now();
-  const paint = k => {
-    const [, cols, lift] = RESOLVE[k], rows = Math.max(1, Math.round(cols * ar));
-    tiny.width = cols; tiny.height = rows;
-    tg.imageSmoothingEnabled = true; tg.drawImage(im, sx, sy, sw, sh, 0, 0, cols, rows);
-    g2.imageSmoothingEnabled = false; g2.clearRect(0, 0, W2, H2); g2.drawImage(tiny, 0, 0, W2, H2);
-    g2.fillStyle = `rgba(255,255,255,${lift})`; g2.fillRect(0, 0, W2, H2);   // lifted toward white, never darker
-  };
+  let lines;
+  try { lines = contours(im, sx, sy, sw, sh, W2, H2); } catch (_) { it.resolving = false; finishResolve(it); return; }
+  const c = document.createElement('canvas'); c.className = 'resolve'; c.width = W2; c.height = H2;
+  it.el.appendChild(c);
+  const g2 = c.getContext('2d');
+  g2.imageSmoothingEnabled = true; g2.imageSmoothingQuality = 'high';
+  const ease = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const t0 = performance.now(), scanAt = TRACE.draw + TRACE.hold, end = scanAt + TRACE.scan;
   const tick = now => {
     const t = now - t0;
-    let k = step;
-    while (k + 1 < RESOLVE.length && t >= RESOLVE[k + 1][0]) k++;
-    if (k !== step) { step = k; paint(k); }
-    if (t < RESOLVE_END) requestAnimationFrame(tick);
+    g2.clearRect(0, 0, W2, H2);
+    const drawn = ease(Math.min(1, t / TRACE.draw)) * H2;                    // how far the drawing has traced
+    const scan = t < scanAt ? 0 : ease(Math.min(1, (t - scanAt) / TRACE.scan)) * H2;   // how far the image is revealed
+    if (scan > 0) { g2.save(); g2.beginPath(); g2.rect(0, 0, W2, scan); g2.clip(); g2.drawImage(im, sx, sy, sw, sh, 0, 0, W2, H2); g2.restore(); }
+    const top = scan, bottom = Math.max(scan, drawn);
+    if (bottom > top) { g2.save(); g2.beginPath(); g2.rect(0, top, W2, bottom - top); g2.clip(); g2.drawImage(lines, 0, 0, W2, H2); g2.restore(); }
+    if (scan > 0 && scan < H2) {                                             // the scanning hairline
+      g2.fillStyle = 'rgba(20,20,22,0.55)'; g2.fillRect(0, Math.round(scan), W2, Math.max(1, Math.round(d)));
+    }
+    if (t < end) requestAnimationFrame(tick);
     else { it.resolving = false; finishResolve(it); }
   };
   requestAnimationFrame(tick);
