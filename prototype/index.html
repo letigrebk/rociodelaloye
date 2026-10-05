@@ -94,6 +94,12 @@ a { color: inherit; text-decoration: none; }
 .world.has-hover .piece.in:not(.hover) { opacity: .78; }
 .piece.opening { filter: brightness(1.06); }
 
+/* Resolve: a piece arrives like a render converging, as a coarse mosaic of itself that
+   steps up in resolution until it is sharp; light throughout, never darkened. */
+.piece.unresolved img, .piece.unresolved video { opacity: 0; }
+.piece .resolve { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; image-rendering: pixelated; transition: opacity .28s linear; }
+.piece .resolve.done { opacity: 0; }
+
 /* Soft focus: sharp in the middle, dissolving toward the edges */
 .veil {
   position: fixed; inset: 0; z-index: 10; pointer-events: none;
@@ -320,6 +326,9 @@ body.show-index .sound, body.show-about .sound, body.show-project .sound { displ
   <button type="button" data-s="1" aria-pressed="false">2</button>
   <button type="button" data-s="2" aria-pressed="false">3</button>
   <button type="button" data-s="3" aria-pressed="false">4</button>
+  <span class="sep">Load</span>
+  <button type="button" data-r="resolve" aria-pressed="false">Resolve</button>
+  <button type="button" data-r="fade" aria-pressed="false">Fade</button>
 </div>
 <div class="screening" id="screening" role="dialog" aria-label="Screening" aria-hidden="true">
   <video id="screenVideo" playsinline preload="none"></video>
@@ -688,6 +697,10 @@ function draw() {
     it.el.style.transform = `translate3d(${it.sx.toFixed(2)}px, ${it.sy.toFixed(2)}px, 0)`;
     const near = it.sx < vw * 1.6 && it.sx + w > -vw * 0.6 && it.sy < vh * 1.6 && it.sy + h > -vh * 0.6;
     if (near && !it.loaded) load(it);
+    if (!it.resolved && it.loaded && loadMode === 'resolve') {
+      const onScreen = it.sx < vw && it.sx + w > 0 && it.sy < vh && it.sy + h > 0;
+      if (onScreen) { it.seen = true; if (it.still) startResolve(it); }
+    }
   }
   placeCap();
   scheduleVideos();
@@ -784,6 +797,59 @@ function load(it) {
   it.loaded = true;
   if (it.v) { it.media.poster = it.media.dataset.poster; it.media.src = it.media.dataset.src; it.media.preload = 'metadata'; }
   else { it.media.src = it.media.dataset.src; }
+  if (loadMode === 'resolve' && !reduce && !it.resolved) {
+    it.el.classList.add('unresolved');
+    const im = new Image();                      // the still (or the loop's poster frame) to resolve from
+    im.decoding = 'async';
+    im.onload = () => { it.still = im; if (it.seen) startResolve(it); };
+    im.onerror = () => finishResolve(it);
+    im.src = it.v ? it.media.dataset.poster : it.media.dataset.src;
+  }
+}
+
+/* ---------- Resolve ----------
+   Runs the first time a piece is actually on screen once its image has arrived:
+   six steps from a ~6-cell-wide mosaic to the full picture, each a little less lifted
+   toward white, then the sharp image takes over. About 0.85 s in all. */
+let loadMode = 'resolve';
+try { const r = localStorage.getItem('rd-load'); if (r === 'resolve' || r === 'fade') loadMode = r; } catch (_) {}
+const RESOLVE = [ [0, 6, 0.5], [110, 11, 0.36], [220, 20, 0.24], [330, 36, 0.14], [440, 64, 0.07], [550, 120, 0.02] ];
+const RESOLVE_END = 660;
+function finishResolve(it) {
+  it.resolved = true; it.el.classList.remove('unresolved');
+  const c = it.el.querySelector('.resolve');
+  if (c) { c.classList.add('done'); setTimeout(() => c.remove(), 320); }
+}
+function startResolve(it) {
+  if (it.resolved || it.resolving || !it.still) return;
+  it.resolving = true;
+  const im = it.still, d = Math.min(2, devicePixelRatio || 1);
+  const W2 = Math.max(1, Math.round(it.w * s * d)), H2 = Math.max(1, Math.round(it.h * s * d));
+  const c = document.createElement('canvas'); c.className = 'resolve'; c.width = W2; c.height = H2;
+  it.el.appendChild(c);
+  const g2 = c.getContext('2d'), tiny = document.createElement('canvas'), tg = tiny.getContext('2d');
+  // crop like object-fit: cover
+  const ar = H2 / W2, iar = im.naturalHeight / im.naturalWidth;
+  let sx = 0, sy = 0, sw = im.naturalWidth, sh = im.naturalHeight;
+  if (iar > ar) { sh = sw * ar; sy = (im.naturalHeight - sh) / 2; } else { sw = sh / ar; sx = (im.naturalWidth - sw) / 2; }
+  let step = -1;
+  const t0 = performance.now();
+  const paint = k => {
+    const [, cols, lift] = RESOLVE[k], rows = Math.max(1, Math.round(cols * ar));
+    tiny.width = cols; tiny.height = rows;
+    tg.imageSmoothingEnabled = true; tg.drawImage(im, sx, sy, sw, sh, 0, 0, cols, rows);
+    g2.imageSmoothingEnabled = false; g2.clearRect(0, 0, W2, H2); g2.drawImage(tiny, 0, 0, W2, H2);
+    g2.fillStyle = `rgba(255,255,255,${lift})`; g2.fillRect(0, 0, W2, H2);   // lifted toward white, never darker
+  };
+  const tick = now => {
+    const t = now - t0;
+    let k = step;
+    while (k + 1 < RESOLVE.length && t >= RESOLVE[k + 1][0]) k++;
+    if (k !== step) { step = k; paint(k); }
+    if (t < RESOLVE_END) requestAnimationFrame(tick);
+    else { it.resolving = false; finishResolve(it); }
+  };
+  requestAnimationFrame(tick);
 }
 
 /* Video: only the loops near the centre play, a few at a time */
@@ -1306,6 +1372,7 @@ modesEl.addEventListener('click', e => {
   if (b.dataset.m) setMode(b.dataset.m);
   else if (b.dataset.o) setOpenMode(b.dataset.o);
   else if (b.dataset.l) setLightMode(b.dataset.l);
+  else if (b.dataset.r) setLoadMode(b.dataset.r);
   else if (b.dataset.s) { spawnK = +b.dataset.s; markSpawn(); const p = spawnPoint(spawnK); tgt.x = p.x; tgt.y = p.y; wake(); }
 });
 function setLightMode(l) {
@@ -1315,6 +1382,13 @@ function setLightMode(l) {
 }
 function markSpawn() { modesEl.querySelectorAll('[data-s]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.s === spawnK))); }
 setOpenMode(openMode);
+function setLoadMode(r) {
+  loadMode = r;
+  modesEl.querySelectorAll('[data-r]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.r === r)));
+  try { localStorage.setItem('rd-load', r); } catch (_) {}
+  if (r === 'fade') items.forEach(it => { if (!it.resolved && !it.resolving) finishResolve(it); });
+}
+setLoadMode(loadMode);
 
 /* Start */
 measure();
