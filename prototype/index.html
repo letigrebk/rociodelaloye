@@ -12,6 +12,8 @@
   --line: #e0e0e0;        /* the site's accent, 88% grey */
   --wash: #f5f5f5;        /* the site's light accent, placeholder behind loading work */
   --nav-air: 245, 246, 248;   /* cool off-white behind the navigation (RGB, used with alpha) */
+  --screen: #000000;          /* screening room: black in any light */
+  --screen-ink: #ffffff;
   /* One typeface, one weight: ABC Diatype Regular. Licensed (Dinamo), so it is read from
      the viewer's computer until the web font files are added; otherwise Helvetica Neue. */
   --font-main: "ABC Diatype", "ABCDiatype-Regular", "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -216,9 +218,42 @@ body.show-about .about { opacity: 1; visibility: visible; transition: opacity .4
 .about-links a:hover { opacity: .6; }
 .about-links a:not([href]) { color: var(--mute); cursor: default; }
 .about-links a:not([href]):hover { opacity: 1; }
+/* Sound: the one public control on the field */
+.sound {
+  position: fixed; left: var(--gutter); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); z-index: 25;
+  font: inherit; font-size: var(--fs-s); color: var(--mute); background: none; border: 0; padding: 4px 0; cursor: pointer;
+}
+.sound:hover, .sound[aria-pressed="true"] { color: var(--ink); }
+body.show-index .sound, body.show-about .sound, body.show-project .sound { display: none; }
+.modes { flex-wrap: wrap; justify-content: flex-end; max-width: calc(100vw - 2 * var(--gutter) - 90px); row-gap: 2px; }
+
+/* Screening: the full work on black, with sound */
+.screening {
+  position: fixed; inset: 0; z-index: 60; background: var(--screen); color: var(--screen-ink);
+  display: grid; place-items: center; opacity: 0; visibility: hidden;
+  transition: opacity .5s var(--ease), visibility 0s .5s;
+}
+.screening.on { opacity: 1; visibility: visible; transition: opacity .5s var(--ease); }
+.screening video { width: 100vw; height: 100svh; object-fit: contain; background: var(--screen); cursor: pointer; }
+.screening .bar {
+  position: absolute; left: var(--gutter); right: var(--gutter); bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+  display: flex; justify-content: space-between; align-items: baseline; gap: 24px;
+  font-size: var(--fs-s); color: color-mix(in srgb, var(--screen-ink) 70%, transparent);
+  transition: opacity .6s var(--ease);
+}
+.screening .top { position: absolute; left: var(--gutter); right: var(--gutter); top: calc(env(safe-area-inset-top, 0px) + 18px); display: flex; justify-content: space-between; font-size: var(--fs-s); color: color-mix(in srgb, var(--screen-ink) 70%, transparent); transition: opacity .6s var(--ease); }
+.screening button { font: inherit; color: var(--screen-ink); background: none; border: 0; padding: 0; cursor: pointer; }
+.screening .tc { font-variant-numeric: tabular-nums; }
+.screening.quiet .bar, .screening.quiet .top { opacity: 0; }
+.screening.quiet { cursor: none; }
+.screening.quiet video { cursor: none; }
+.p-watch { margin-top: 18px; display: flex; flex-direction: column; gap: 6px; font-size: var(--fs-m); }
+.p-watch button, .p-watch a { font: inherit; color: var(--ink); background: none; border: 0; padding: 0; cursor: pointer; text-align: left; text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
+.p-watch .req { font-size: var(--fs-s); color: var(--mute); }
+.p-watch .req a { font-size: inherit; color: var(--mute); }
 .hint {
-  position: fixed; left: var(--gutter); bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); z-index: 20;
-  font-size: var(--fs-s); color: var(--mute); pointer-events: none;
+  position: fixed; left: var(--gutter); bottom: calc(env(safe-area-inset-bottom, 0px) + 44px); z-index: 20;
+  font-size: var(--fs-s); color: var(--mute); pointer-events: none; margin: 0;
   transition: opacity .8s var(--ease);
 }
 .hint.gone { opacity: 0; }
@@ -240,7 +275,8 @@ body.show-about .about { opacity: 1; visibility: visible; transition: opacity .4
   .modes span { display: none; }
   .modes { gap: 12px; }
   .modes [data-o="gather"] { margin-left: 10px; }
-  .hint { bottom: calc(env(safe-area-inset-bottom, 0px) + 46px); }
+  .hint { bottom: calc(env(safe-area-inset-bottom, 0px) + 44px); }
+  .modes { max-width: calc(100vw - 2 * var(--gutter) - 70px); }
 }
 @media (prefers-reduced-motion: reduce) {
   .piece { transition: none; }
@@ -261,6 +297,7 @@ body.show-about .about { opacity: 1; visibility: visible; transition: opacity .4
 <div class="haze" aria-hidden="true"></div>
 <div class="cap" id="cap" aria-hidden="true"></div>
 <p class="hint" id="hint">Drag or scroll to explore</p>
+<button type="button" class="sound" id="sound" aria-pressed="false">Sound off</button>
 <div class="modes" id="modes" role="group" aria-label="Field options (prototype)">
   <span>Field</span>
   <button type="button" data-m="plain" aria-pressed="false">Plain</button>
@@ -269,6 +306,22 @@ body.show-about .about { opacity: 1; visibility: visible; transition: opacity .4
   <span class="sep">Open</span>
   <button type="button" data-o="gather" aria-pressed="false">Gather</button>
   <button type="button" data-o="simple" aria-pressed="false">Simple</button>
+  <span class="sep">Light</span>
+  <button type="button" data-l="now" aria-pressed="false">Now</button>
+  <button type="button" data-l="morning" aria-pressed="false">Morning</button>
+  <button type="button" data-l="day" aria-pressed="false">Day</button>
+  <button type="button" data-l="dusk" aria-pressed="false">Dusk</button>
+  <button type="button" data-l="night" aria-pressed="false">Night</button>
+  <span class="sep">Start</span>
+  <button type="button" data-s="0" aria-pressed="false">1</button>
+  <button type="button" data-s="1" aria-pressed="false">2</button>
+  <button type="button" data-s="2" aria-pressed="false">3</button>
+  <button type="button" data-s="3" aria-pressed="false">4</button>
+</div>
+<div class="screening" id="screening" role="dialog" aria-label="Screening" aria-hidden="true">
+  <video id="screenVideo" playsinline preload="none"></video>
+  <div class="top"><span id="screenTitle"></span><button type="button" id="screenClose">Close</button></div>
+  <div class="bar"><span id="screenNote">Excerpt</span><span class="tc" id="screenTc">00:00 / 00:00</span></div>
 </div>
 
 <section class="index" id="index" aria-label="Index">
@@ -304,6 +357,15 @@ const PROJECTS = {
 };
 const INDEX_ORDER = ['ih', 'gs', 'ac', 'sim', 'fif'];
 /* Project texts as they stand on the current site; Indoor Horizon's text is still to come. */
+/* Work labels, museum style: only fields that are known are shown. `watch` is the
+   clip the screening plays (an excerpt for now); `request` offers the full work. */
+const LABELS = {
+  ih:  { medium: 'CGI video, color and sound', duration: '', edition: '', watch: 'ih-v-key', request: true },
+  gs:  { medium: 'CGI video, color and sound', duration: '2 min 14 sec', edition: '', watch: 'gs-v-hand' },
+  ac:  { medium: 'Live simulation, open world', duration: '', edition: '' },
+  sim: { medium: 'CGI video, color and sound', duration: '2 min 14 sec', edition: '', watch: 'sim-v-pig' },
+  fif: { medium: 'CGI video, color and sound', duration: '2 min 14 sec', edition: '' }
+};
 const TEXTS = {
   ih:  { label: 'CGI video, color and sound', text: 'Text to come.' },
   gs:  { label: 'CGI video, 2 min 14 sec, color and sound', text: 'Ghost//Sintax is a digital, video art piece that explores the disembodied, fragmented nature of selfhood within the digital realm. Set in a vast, alien landscape suspended between dimensions, the work delves into what it means to exist as a lingering data “ghost”—a presence caught between physical reality and digital immortality. The piece uses a haunting and surreal environment to visualize the protagonist’s journey through fractured digital identities and ghostly remnants of past selves.' },
@@ -318,6 +380,14 @@ const TEXTS = {
    v marks a video loop; `note` overrides the medium in the caption. */
 const W = 4600, H = 3200;
 const START = { x: 2300, y: 1600 }, START_PHONE = { x: 2150, y: 1580 };
+/* Ways in: the first visit always opens on the first; later visits open on one of the
+   others, never the same twice in a row. Each is composed by hand. */
+const SPAWNS = [
+  { x: 2300, y: 1600, px: 2150, py: 1580 },   // the pool, the water park loop, the hand
+  { x: 1060, y: 1330, px: 1000, py: 1300 },   // Simulacra: the city, the pink desert, the alley
+  { x: 3640, y: 880,  px: 3600, py: 760 },    // Anima_C0de's base above the Indoor Horizon water park
+  { x: 2680, y: 2520, px: 2300, py: 2380 }    // the lounger, the pool loop, the key card, the slides below
+];
 const L = 9 / 16, P45 = 1.25;
 const PIECES = [
   // Opening frame: one dominant image, a tall loop beside it, a small fragment, work bleeding in at the edges
@@ -332,7 +402,7 @@ const PIECES = [
   { id: 'ih-waterpark',  p: 'ih',  x: 3520, y: 1050, w: 540, r: L,    d: 1 },
   { id: 'ih-comfort',    p: 'ih',  x: 3820, y: 2380, w: 900, r: L,    d: 1 },
   { id: 'ih-v-card',     p: 'ih',  x: 3120, y: 2470, w: 190, r: P45,  d: 2, v: 1 },
-  { id: 'ih-v-key',      p: 'ih',  x: 4180, y: 1560, w: 400, r: L,    d: 0, v: 1 },
+  { id: 'ih-v-key',      p: 'ih',  x: 4180, y: 1560, w: 400, r: L,    d: 0, v: 1, a: 1 },
   { id: 'ih-v-pool',     p: 'ih',  x: 2140, y: 2430, w: 260, r: P45,  d: 1, v: 1 },
   { id: 'ih-domes',      p: 'ih',  x: 2760, y: 760,  w: 440, r: L,    d: 0 },
 
@@ -344,7 +414,7 @@ const PIECES = [
   { id: 'ac-install',    p: 'ac',  x: 2980, y: 300,  w: 230, r: 2/3,  d: 0, note: 'Installation view' },
 
   // Simulacra, north-west
-  { id: 'sim-v-pig',     p: 'sim', x: 820,  y: 1660, w: 540, r: L,    d: 1, v: 1 },
+  { id: 'sim-v-pig',     p: 'sim', x: 820,  y: 1660, w: 540, r: L,    d: 1, v: 1, a: 1 },
   { id: 'sim-hotel',     p: 'sim', x: 1110, y: 1800, w: 200, r: 16/9, d: 2 },
   { id: 'sim-pink',      p: 'sim', x: 760,  y: 760,  w: 580, r: L,    d: 1 },
   { id: 'sim-bubbles',   p: 'sim', x: 1420, y: 470,  w: 360, r: L,    d: 0 },
@@ -352,7 +422,7 @@ const PIECES = [
   { id: 'sim-install',   p: 'sim', x: 1880, y: 760,  w: 240, r: 1.5,  d: 1, note: 'Installation view' },
 
   // Ghost//Sintax, south-west
-  { id: 'gs-v-hand',     p: 'gs',  x: 1000, y: 2640, w: 680, r: L,    d: 1, v: 1 },
+  { id: 'gs-v-hand',     p: 'gs',  x: 1000, y: 2640, w: 680, r: L,    d: 1, v: 1, a: 1 },
   { id: 'gs-face',       p: 'gs',  x: 1380, y: 2470, w: 250, r: 438/781, d: 2 },
   { id: 'gs-face2',      p: 'gs',  x: 430,  y: 2250, w: 400, r: L,    d: 1 },
   { id: 'gs-jacket',     p: 'gs',  x: 1760, y: 2960, w: 320, r: 440/785, d: 0 },
@@ -484,6 +554,7 @@ addEventListener('pointermove', e => {
   if (fine && e.pointerType === 'mouse') {
     lean.tx = (e.clientX / vw - 0.5) * 2; lean.ty = (e.clientY / vh - 0.5) * 2;
   }
+  noteActivity();
   if (!dragging || e.pointerId !== pid) return;
   const dx = e.clientX - p0.x, dy = e.clientY - p0.y;
   if (!moved && Math.hypot(dx, dy) > 5) {
@@ -573,12 +644,14 @@ function placeCap() {
 /* Frame loop: the camera eases toward its target, which is what gives the glide */
 let raf = 0, last = 0;
 function kick() { if (!raf) { last = 0; raf = requestAnimationFrame(frame); } }
+function noteActivity() { lastInput = performance.now(); }
 function wake() { lastInput = performance.now(); hint.classList.add('gone'); if (!raf) { last = 0; raf = requestAnimationFrame(frame); } }
 function frame(now) {
   raf = 0;
   const dt = last ? Math.min(48, now - last) : 16.7; last = now;
   const tau = reduce ? 1 : dragging ? 60 : 260;
   const k = 1 - Math.exp(-dt / tau);
+  driftStep(now, dt);
   if (!dragging) {
     const b = bounds();
     tgt.x = tgt.x + (clamp(tgt.x, b.minX, b.maxX) - tgt.x) * (1 - Math.exp(-dt / 140));
@@ -597,7 +670,7 @@ function frame(now) {
   prevCam.x = cam.x; prevCam.y = cam.y;
   const want = clamp(speed / 1.1, 0, 1);
   traceBoost += (want - traceBoost) * (1 - Math.exp(-dt / (want > traceBoost ? 220 : 1400)));
-  const animated = !reduce && ((mode === 'network' && traceBoost > 0.003) || now - revealT0 < 3200);
+  const animated = !reduce && ((mode === 'network' && traceBoost > 0.003) || now - revealT0 < 3200 || drift.amt > 0.001 || driftWanted(now));
   if (moving || animated) raf = requestAnimationFrame(frame);
   if (!moving && !wasSettled) { wasSettled = true; settled(); }
   if (moving) wasSettled = false;
@@ -615,6 +688,7 @@ function draw() {
   }
   placeCap();
   scheduleVideos();
+  soundStep();
   drawInk(performance.now(), cx, cy);
 }
 
@@ -723,7 +797,12 @@ function videos() {
   for (const v of vids) {
     const want = !reduce && v.inView && n < max;
     if (want) n++;
-    if (want && !v.i.playing) { if (!v.i.loaded) load(v.i); v.i.playing = true; v.i.media.play().catch(() => { v.i.playing = false; }); }
+    if (want && !v.i.playing) {
+      if (!v.i.loaded) load(v.i); v.i.playing = true;
+      v.i.media.play().catch(() => {
+        if (!v.i.media.muted) { v.i.media.muted = true; v.i.media.play().catch(() => { v.i.playing = false; }); } else v.i.playing = false;
+      });
+    }
     else if (!want && v.i.playing) { v.i.playing = false; v.i.media.pause(); }
   }
 }
@@ -786,7 +865,7 @@ navIndex.addEventListener('click', () => setView('index'));
 navAbout.addEventListener('click', () => setView('about'));
 document.getElementById('logo').addEventListener('click', e => {
   e.preventDefault(); setView('world');
-  const st = phone ? START_PHONE : START; tgt.x = st.x; tgt.y = st.y; wake();
+  const st = spawnPoint(spawnK); tgt.x = st.x; tgt.y = st.y; wake();
 });
 
 /* ---------- Opening a work ----------
@@ -804,6 +883,15 @@ const mediaHTML = (it, cls) => it.v
   ? `<video class="${cls}" data-id="${it.id}" muted loop playsinline preload="none" poster="media/${it.id}.jpg" data-src="media/${it.id}.mp4" style="aspect-ratio:${(1 / it.r).toFixed(4)}"></video>`
   : `<img class="${cls}" data-id="${it.id}" src="media/${it.id}.jpg" alt="" style="aspect-ratio:${(1 / it.r).toFixed(4)}">`;
 
+function labelLines(k) {
+  const pr = PROJECTS[k], lb = LABELS[k];
+  return [pr.year, lb.medium, lb.duration, lb.edition].filter(Boolean).join('<br>');
+}
+function watchHTML(k) {
+  const lb = LABELS[k];
+  if (!lb.watch && !lb.request) return '';
+  return `<div class="p-watch rv">${lb.watch ? `<button type="button" data-watch="${k}">Watch excerpt</button>` : ''}${lb.request ? `<span class="req">Full-length work available on request · <a href="mailto:rcdelaloye@gmail.com?subject=${encodeURIComponent(PROJECTS[k].title)}">Email</a></span>` : ''}</div>`;
+}
 function buildProject(hero, sibs) {
   const pr = PROJECTS[hero.p], tx = TEXTS[hero.p];
   const slotCls = it => isPortrait(it) ? 'portrait' : (it.w >= 500 ? 'wide' : '');
@@ -811,7 +899,7 @@ function buildProject(hero, sibs) {
     <div class="p-top${isPortrait(hero) ? ' portrait' : ''}">
     <figure class="p-hero${isPortrait(hero) ? ' portrait' : ''}">${mediaHTML(hero, 'm wait')}</figure>
     <header class="p-head">
-      <div><h1 class="p-title rv">${pr.title}</h1><p class="p-label rv">${pr.year}<br>${tx.label}</p></div>
+      <div><h1 class="p-title rv">${pr.title}</h1><p class="p-label rv">${labelLines(hero.p)}</p>${watchHTML(hero.p)}</div>
       <p class="p-text rv">${tx.text}</p>
     </header>
     </div>
@@ -819,6 +907,7 @@ function buildProject(hero, sibs) {
     <nav class="p-foot rv"><button type="button" id="pBack">← Back to the world</button>${pr.href ? `<a href="${pr.href}" target="_blank" rel="noopener">Current page on rociodelaloye.com ↗</a>` : ''}</nav>
   </div>`;
   projectEl.querySelector('#pBack').addEventListener('click', () => closeProject());
+  projectEl.querySelectorAll('[data-watch]').forEach(b => b.addEventListener('click', () => openScreening(b.dataset.watch)));
 }
 
 function cloneOf(it) {
@@ -995,6 +1084,165 @@ addEventListener('keydown', e => {
 });
 addEventListener('pointerdown', () => { if (flightState) flightState.skip = true; }, true);
 
+/* ---------- The world keeps running ----------
+   After 20 seconds without input the camera starts a very slow drift through the
+   field, turning gently and steering away from the edges. Any input stops it. */
+const IDLE_AFTER = 20000;
+const drift = { amt: 0, th: Math.random() * Math.PI * 2 };
+function overlayOpen() {
+  const c = document.body.classList;
+  return c.contains('show-index') || c.contains('show-about') || c.contains('show-project') || screenOpen;
+}
+function driftWanted(now) {
+  return !reduce && !MAP && !dragging && !overlayOpen() && !document.hidden && now - lastInput > IDLE_AFTER;
+}
+function driftStep(now, dt) {
+  const want = driftWanted(now);
+  drift.amt += ((want ? 1 : 0) - drift.amt) * (1 - Math.exp(-dt / (want ? 3500 : 350)));
+  if (drift.amt < 0.001) return;
+  const b = bounds(), cx = (b.minX + b.maxX) / 2, cy = (b.minY + b.maxY) / 2;
+  drift.th += (Math.sin(now * 0.00011) * 0.00009 + Math.sin(now * 0.000037 + 1.3) * 0.00006) * dt;
+  // near an edge, turn back toward the middle of the field
+  const ex = Math.max(0, Math.abs(tgt.x - cx) - (b.maxX - b.minX) / 2 + 500) / 500;
+  const ey = Math.max(0, Math.abs(tgt.y - cy) - (b.maxY - b.minY) / 2 + 400) / 400;
+  if (ex > 0 || ey > 0) {
+    const home = Math.atan2(cy - tgt.y, cx - tgt.x);
+    let d = home - drift.th; d = Math.atan2(Math.sin(d), Math.cos(d));
+    drift.th += d * Math.min(1, (ex + ey)) * 0.0012 * dt;
+  }
+  const v = 16 / 1000 / s * drift.amt;                       // about 16 screen px per second
+  tgt.x += Math.cos(drift.th) * v * dt; tgt.y += Math.sin(drift.th) * v * 0.7 * dt;
+}
+setInterval(() => { if (driftWanted(performance.now())) kick(); }, 1000);
+
+/* ---------- Sound you walk into ----------
+   Off by default. When on, each loop that has sound is heard according to how close
+   it is to the centre of the screen: it fades in as you approach and out as you leave.
+   Volume runs through Web Audio so it also works on phones. */
+const soundBtn = document.getElementById('sound');
+const SOUND = { on: false, ctx: null, gains: new Map() };
+function ensureGain(it) {
+  if (!SOUND.ctx || SOUND.gains.has(it)) return;
+  try {
+    const src = SOUND.ctx.createMediaElementSource(it.media), gn = SOUND.ctx.createGain();
+    gn.gain.value = 0; src.connect(gn).connect(SOUND.ctx.destination);
+    SOUND.gains.set(it, gn);
+  } catch (_) {}
+}
+function setSound(on) {
+  SOUND.on = on;
+  soundBtn.textContent = on ? 'Sound on' : 'Sound off';
+  soundBtn.setAttribute('aria-pressed', String(on));
+  if (on && !SOUND.ctx) { try { SOUND.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) {} }
+  if (on && SOUND.ctx && SOUND.ctx.state === 'suspended') SOUND.ctx.resume();
+  items.filter(i => i.a).forEach(it => {
+    if (on) { if (!it.loaded) load(it); ensureGain(it); it.media.muted = false; if (it.playing) it.media.play().catch(() => {}); }
+  });
+  if (!on) setTimeout(() => { if (!SOUND.on) items.filter(i => i.a).forEach(it => { it.media.muted = true; }); }, 600);
+  soundStep(true); kick();
+}
+soundBtn.addEventListener('click', () => setSound(!SOUND.on));
+let soundT = 0;
+function soundStep(force) {
+  const now = performance.now();
+  if (!force && now - soundT < 90) return;
+  soundT = now;
+  const reach = Math.hypot(vw, vh) * 0.5;
+  items.forEach(it => {
+    if (!it.a) return;
+    let g = 0;
+    if (SOUND.on && it.playing && !overlayOpen()) {
+      const w = it.w * s, h = it.h * s, d = Math.hypot(it.sx + w / 2 - vw / 2, it.sy + h / 2 - vh / 2);
+      g = Math.pow(clamp(1 - d / reach, 0, 1), 1.6) * 0.9;
+    }
+    const gn = SOUND.gains.get(it);
+    if (gn) gn.gain.setTargetAtTime(g, SOUND.ctx.currentTime, 0.35);
+    else if (!it.media.muted) it.media.volume = g;
+  });
+}
+
+/* ---------- Light that follows the visitor's day ----------
+   The white of the field shifts almost imperceptibly with local time: cool in the
+   morning, neutral at midday, a little warm at dusk, a soft low light at night. */
+const LIGHTS = [            // hour, background, navigation air
+  [0,    [234, 234, 231], [227, 228, 228]],
+  [5,    [234, 234, 231], [227, 228, 228]],
+  [7.5,  [246, 248, 251], [236, 241, 247]],
+  [10.5, [255, 255, 255], [245, 246, 248]],
+  [16,   [255, 255, 255], [245, 246, 248]],
+  [18.5, [251, 247, 241], [246, 240, 232]],
+  [21,   [234, 234, 231], [227, 228, 228]],
+  [24,   [234, 234, 231], [227, 228, 228]]
+];
+const LIGHT_PRESET = { morning: 8.5, day: 13, dusk: 19, night: 23 };
+let lightMode = 'now';
+function lightAt(h) {
+  let i = 0; while (i < LIGHTS.length - 2 && h >= LIGHTS[i + 1][0]) i++;
+  const [h0, b0, n0] = LIGHTS[i], [h1, b1, n1] = LIGHTS[i + 1], t = clamp((h - h0) / (h1 - h0), 0, 1);
+  const mix = (a, b) => a.map((v, k) => Math.round(v + (b[k] - v) * t));
+  return [mix(b0, b1), mix(n0, n1)];
+}
+function applyLight() {
+  const d = new Date(), h = lightMode === 'now' ? d.getHours() + d.getMinutes() / 60 : LIGHT_PRESET[lightMode];
+  const [bg, air] = lightAt(h), root = document.documentElement.style;
+  root.setProperty('--bg', `rgb(${bg.join(',')})`);
+  root.setProperty('--nav-air', air.join(', '));
+}
+setInterval(() => { if (lightMode === 'now') applyLight(); }, 60000);
+
+/* ---------- Screening ----------
+   The work on black, full screen, with sound. The controls fade away while it plays;
+   moving the pointer brings them back. Click the picture to pause; Esc closes. */
+const screenEl = document.getElementById('screening'), screenVideo = document.getElementById('screenVideo');
+const screenTc = document.getElementById('screenTc'), screenTitle = document.getElementById('screenTitle');
+let screenOpen = false, quietTimer = 0;
+const fmt = t => { t = Math.max(0, Math.floor(t || 0)); return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); };
+function screenTick() { screenTc.textContent = `${fmt(screenVideo.currentTime)} / ${fmt(screenVideo.duration)}`; }
+function screenWake() {
+  screenEl.classList.remove('quiet'); clearTimeout(quietTimer);
+  quietTimer = setTimeout(() => { if (!screenVideo.paused) screenEl.classList.add('quiet'); }, 2200);
+}
+function openScreening(k) {
+  const id = LABELS[k].watch; if (!id) return;
+  const pr = PROJECTS[k];
+  screenTitle.textContent = `${pr.title}, ${pr.year}`;
+  screenVideo.src = `media/${id}.mp4`; screenVideo.poster = `media/${id}.jpg`;
+  screenVideo.muted = false; screenVideo.currentTime = 0;
+  screenOpen = true; screenEl.classList.add('on'); screenEl.setAttribute('aria-hidden', 'false');
+  projectEl.querySelectorAll('video').forEach(v => v.pause());
+  soundStep(true);
+  screenVideo.play().catch(() => { screenVideo.muted = true; screenVideo.play().catch(() => {}); });
+  screenWake();
+  document.getElementById('screenClose').focus({ preventScroll: true });
+}
+function closeScreening() {
+  if (!screenOpen) return;
+  screenOpen = false; screenEl.classList.remove('on', 'quiet'); screenEl.setAttribute('aria-hidden', 'true');
+  screenVideo.pause();
+  setTimeout(() => { if (!screenOpen) { screenVideo.removeAttribute('src'); screenVideo.load(); } }, 520);
+  if (slotObserver) projectEl.querySelectorAll('video').forEach(v => { slotObserver.unobserve(v); slotObserver.observe(v); });
+  const b = projectEl.querySelector('[data-watch]'); if (b) b.focus({ preventScroll: true });
+}
+screenVideo.addEventListener('timeupdate', screenTick);
+screenVideo.addEventListener('loadedmetadata', screenTick);
+screenVideo.addEventListener('ended', () => screenEl.classList.remove('quiet'));
+screenVideo.addEventListener('click', () => { if (screenVideo.paused) { if (screenVideo.ended) screenVideo.currentTime = 0; screenVideo.play(); } else screenVideo.pause(); screenWake(); });
+screenEl.addEventListener('pointermove', screenWake);
+document.getElementById('screenClose').addEventListener('click', closeScreening);
+addEventListener('keydown', e => { if (screenOpen && e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); closeScreening(); } }, true);
+
+/* ---------- Ways in ---------- */
+function pickSpawn() {
+  let visits = 0, lastSpawn = -1;
+  try { visits = +localStorage.getItem('rd-visits') || 0; lastSpawn = +(localStorage.getItem('rd-spawn') ?? -1); } catch (_) {}
+  let k = 0;
+  if (visits > 0) { const pool = [1, 2, 3, 0].filter(i => i !== lastSpawn); k = pool[Math.floor(Math.random() * pool.length)]; }
+  try { localStorage.setItem('rd-visits', String(visits + 1)); localStorage.setItem('rd-spawn', String(k)); } catch (_) {}
+  return k;
+}
+let spawnK = 0;
+function spawnPoint(k) { const sp = SPAWNS[k]; return phone ? { x: sp.px, y: sp.py } : { x: sp.x, y: sp.y }; }
+
 /* Field option switch (prototype only) */
 const modesEl = document.getElementById('modes');
 let openMode = 'gather';
@@ -1012,13 +1260,24 @@ function setMode(m) {
 }
 modesEl.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.m) setMode(b.dataset.m); else if (b.dataset.o) setOpenMode(b.dataset.o);
+  if (b.dataset.m) setMode(b.dataset.m);
+  else if (b.dataset.o) setOpenMode(b.dataset.o);
+  else if (b.dataset.l) setLightMode(b.dataset.l);
+  else if (b.dataset.s) { spawnK = +b.dataset.s; markSpawn(); const p = spawnPoint(spawnK); tgt.x = p.x; tgt.y = p.y; wake(); }
 });
+function setLightMode(l) {
+  lightMode = l;
+  modesEl.querySelectorAll('[data-l]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.l === l)));
+  applyLight();
+}
+function markSpawn() { modesEl.querySelectorAll('[data-s]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.s === spawnK))); }
 setOpenMode(openMode);
 
 /* Start */
 measure();
-if (phone) { cam.x = tgt.x = START_PHONE.x; cam.y = tgt.y = START_PHONE.y; }
+spawnK = MAP ? 0 : pickSpawn(); markSpawn();
+{ const p = spawnPoint(spawnK); cam.x = tgt.x = p.x; cam.y = tgt.y = p.y; }
+setLightMode('now');
 if (location.hash === '#index') setView('index');
 if (location.hash === '#about') setView('about');
 if (MAP) { cam.x = tgt.x = W / 2; cam.y = tgt.y = H / 2; document.querySelector('.veil').hidden = true; document.querySelector('.haze').hidden = true; }
